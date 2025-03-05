@@ -43,7 +43,7 @@ attrs @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/attrs_1699
 Automat @ file:///tmp/build/80754af9/automat_1600298431173/work
 autopep8 @ file:///croot/autopep8_1708962882016/work
 Babel @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/babel_1699475785740/work
-bcrypt @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/bcrypt_1699483842258/work
+bcrypt 
 beautifulsoup4 @ file:///C:/b/abs_d5wytg_p0w/croot/beautifulsoup4-split_1718029833749/work
 binaryornot @ file:///tmp/build/80754af9/binaryornot_1617751525010/work
 black @ file:///C:/b/abs_3arhghl9_x/croot/black_1725573890945/work
@@ -199,6 +199,7 @@ multidict @ file:///C:/b/abs_44ido987fv/croot/multidict_1701097803486/work
 multipledispatch @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/multipledispatch_1699473951974/work
 mypy @ file:///C:/b/abs_b8k0j63oc7/croot/mypy-split_1725574346532/work
 mypy-extensions @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/mypy_extensions_1699482634516/work
+mysql-connector-python==9.2.0
 mysqlclient==2.2.7
 namex==0.0.8
 navigator-updater @ file:///C:/b/abs_22_3uaq2ey/croot/navigator-updater_1718030405023/work
@@ -213,14 +214,14 @@ notebook @ file:///C:/b/abs_feeub5ouq6/croot/notebook_1727197380211/work
 notebook_shim @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/notebook-shim_1701806592322/work
 numba @ file:///C:/b/abs_51yyu3qucu/croot/numba_1720540987599/work
 numexpr @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/numexpr_1699503421264/work
-numpy @ file:///C:/b/abs_c1ywpu18ar/croot/numpy_and_numpy_base_1708638681471/work/dist/numpy-1.26.4-cp312-cp312-win_amd64.whl#sha256=becc06674317799ad0165a939a7613809d0bee9bd328a1e4308c57c39cacf08c
+numpy 
 numpydoc @ file:///C:/b/abs_bbspp5l8vu/croot/numpydoc_1718279185573/work
 openpyxl @ file:///C:/b/abs_0e6ca21lac/croot/openpyxl_1721752965859/work
 opt_einsum==3.4.0
 optree==0.13.1
 overrides @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/overrides_1701806336503/work
 packaging @ file:///C:/b/abs_c3vlh0z4jw/croot/packaging_1720101866539/work
-pandas @ file:///C:/b/abs_9aotnvvz16/croot/pandas_1718308978393/work/dist/pandas-2.2.2-cp312-cp312-win_amd64.whl#sha256=93959056e02e9855025011adb18394296a58d49e72b9342733b7693a5267c790
+pandas 
 pandocfilters @ file:///opt/conda/conda-bld/pandocfilters_1643405455980/work
 panel @ file:///C:/b/abs_fas2lxv_bs/croot/panel_1728066386547/work
 param @ file:///C:/b/abs_b4yato0oux/croot/param_1719347953072/work
@@ -325,7 +326,7 @@ semver @ file:///C:/b/abs_4bkbn3v6jp/croot/semver_1709243682483/work
 Send2Trash @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/send2trash_1701806400767/work
 sentry-sdk @ file:///C:/b/abs_03mwb6wi8k/croot/sentry-sdk_1732198189303/work
 service-identity @ file:///Users/ktietz/demo/mc3/conda-bld/service_identity_1629460757137/work
-setuptools==75.1.0
+setuptools==75.8.2
 shellingham @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/shellingham_1699475566718/work
 sip @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/sip_1699475590677/work
 six @ file:///tmp/build/80754af9/six_1644875935023/work
@@ -347,7 +348,7 @@ spyder-kernels @ file:///C:/b/abs_e5u6y4ldr2/croot/spyder-kernels_1707937767956/
 SQLAlchemy @ file:///C:/b/abs_7duxw5rxx8/croot/sqlalchemy_1725885067126/work
 stack-data @ file:///opt/conda/conda-bld/stack_data_1646927590127/work
 statsmodels @ file:///C:/b/abs_54b33xdukx/croot/statsmodels_1718381209933/work
-streamlit @ file:///C:/b/abs_84p_54gim8/croot/streamlit_1724335176234/work
+streamlit 
 streamlit-option-menu==0.4.0
 sympy @ file:///C:/b/abs_4e4p71hdj_/croot/sympy_1724938208509/work
 tables @ file:///C:/b/abs_92un5wtnqq/croot/pytables_1725380800658/work
@@ -392,7 +393,7 @@ webencodings @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/web
 websocket-client @ file:///C:/b/abs_5dmnxxoci9/croot/websocket-client_1715878351319/work
 Werkzeug @ file:///C:/b/abs_8bittcw9jr/croot/werkzeug_1716533366070/work
 whatthepatch @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/whatthepatch_1699497134590/work
-wheel==0.44.0
+wheel==0.45.1
 widgetsnbextension @ file:///C:/b/abs_538o2crz7f/croot/widgetsnbextension_1710960099872/work
 win-inet-pton @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/win_inet_pton_1699472992992/work
 wrapt @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/wrapt_1699480231633/work
