@@ -11,7 +11,7 @@ DO_model = pickle.load(open('DO_model.sav', 'rb'))  # Assumes keras model
 scaler = pickle.load(open('Scaler.pkl', 'rb'))
 
 # Database connection setup
-DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
+DATABASE_URL = "mysql+pymysql://sql7766198:u1VYyGNmaQ@sql7.freesqldatabase.com/sql7766198"
 engine = create_engine(DATABASE_URL)
 
 def save_prediction_to_db(engine, nama, nim, tahun_masuk, jalur_masuk, hasil, probabilitas, ips_data):
