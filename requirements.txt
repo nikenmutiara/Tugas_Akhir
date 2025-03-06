@@ -2,6 +2,7 @@ bcrypt
 matplotlib
 mysql-connector-python==9.2.0
 numpy
+openpyxl
 pandas
 PyMySQL==1.1.1
 protobuf==3.20.*
