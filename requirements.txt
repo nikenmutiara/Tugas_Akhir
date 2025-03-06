@@ -6,7 +6,7 @@ pandas
 PyMySQL==1.1.1
 streamlit 
 streamlit-option-menu==0.4.0
-tensorboard==2.18.0
+tensorboard==2.12.0
 tensorboard-data-server==0.7.2
-tensorflow==2.18.0
-tensorflow_intel==2.18.0
+tensorflow==2.12.0
+
