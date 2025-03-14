@@ -6,7 +6,8 @@ import time
 
 def get_db_connection():
     try:
-        DATABASE_URL = "mysql+pymysql://sql7766198:u1VYyGNmaQ@sql7.freesqldatabase.com/sql7766198"
+        DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
+        #DATABASE_URL = "mysql+pymysql://sql7766198:u1VYyGNmaQ@sql7.freesqldatabase.com/sql7766198"
         engine = create_engine(DATABASE_URL)
         Session = sessionmaker(bind=engine)
         return Session()
