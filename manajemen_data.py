@@ -141,7 +141,7 @@ def delete_mahasiswa(id_mahasiswa, engine):
             return False, f"Error saat menghapus data: {str(e)}"
         
 # Jalur Masuk sesuai dengan jalur_masuk_options di kode prediksi
-jalur_masuk_options = ['SBMPT', 'SNMPTN', 'Mandiri', 'Beasiswa', 'Lainnya']
+jalur_masuk_options = ['SBMPTN', 'SNMPTN', 'Mandiri', 'Beasiswa', 'Lainnya']
 
 hasil_klasifikasi_mapping = {
     0: "Tidak Berpotensi DO",
