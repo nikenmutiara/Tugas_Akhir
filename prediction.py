@@ -28,7 +28,7 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
             ).fetchone()
             
             if not admin_check:
-                return False, "Admin tidak ditemukan"
+                return False, "User tidak ditemukan"
             
             # Check if student exists
             mahasiswa_check_query = text("""
@@ -42,7 +42,7 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
             if not mahasiswa_result:
                 mahasiswa_query = text("""
                     INSERT INTO `mahasiswa` 
-                    (nama, NIM, `Angkatan`, `program_studi`, `jalur_masuk`)
+                    (nama, NIM, `angkatan`, `program_studi`, `jalur_masuk`)
                     VALUES (:nama, :nim, :angkatan, :program_studi, :jalur_masuk)
                 """)
                 connection.execute(mahasiswa_query, {
@@ -135,6 +135,7 @@ def run_prediction():
         program_studi = st.text_input('Program Studi')
     
         # Input data akademik
+        SKS7 = st.text_input('Total SKS Semester 7')
         IPKS7 = st.text_input('Indeks Prestasi Kumulatif Semester 7 (IPKS7)')
         IPS1 = st.text_input('Indeks Prestasi Semester 1 (IPS1)')
         IPS2 = st.text_input('Indeks Prestasi Semester 2 (IPS2)')
@@ -143,14 +144,13 @@ def run_prediction():
         IPS5 = st.text_input('Indeks Prestasi Semester 5 (IPS5)')
         IPS6 = st.text_input('Indeks Prestasi Semester 6 (IPS6)')
         IPS7 = st.text_input('Indeks Prestasi Semester 7 (IPS7)')
-        SKS7 = st.text_input('Total SKS Semester 7')
 
         if st.button('Klasifikasi Status Mahasiswa'):
             try:
                 # Validasi input manual
                 input_numerical_data = [
-                    float(IPKS7), float(IPS1), float(IPS2), float(IPS3),
-                    float(IPS4), float(IPS5), float(IPS6), float(IPS7), float(SKS7)
+                    float(SKS7), float(IPKS7), float(IPS1), float(IPS2), float(IPS3),
+                    float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
                 
                 # Encode jalur masuk jika diperlukan (one-hot encoding atau encoding lainnya)
@@ -215,7 +215,7 @@ def run_prediction():
 
                 # Validasi kolom yang dibutuhkan
                 required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
-                                   'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7', 'SKS7']
+                                   'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
                 ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
             
                 if all(col in data.columns for col in required_columns):
@@ -244,8 +244,8 @@ def run_prediction():
                     for _, row in data.iterrows():
                         # Siapkan data numerik
                         numerical_data = [
-                            row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'],
-                            row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7'], row['SKS7']
+                            row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'],
+                            row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
                         
                         # Encode jalur masuk jika diperlukan (simplifkasi, sesuaikan dengan preprocessing Anda)
@@ -279,17 +279,17 @@ def run_prediction():
                     with engine.connect() as connection:
                         for _, row in data.iterrows():
                             academic_data = [
-                                row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
-                                row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7'], row['SKS7']
+                                row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
+                                row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                             ]
                             # Simpan prediksi dan cek duplikasi
                             success, message = save_prediction_to_db(
                                 engine,
-                                row['Nama'], 
+                                row['nama'], 
                                 row['NIM'], 
-                                row['Angkatan'], 
-                                row['Program Studi'],
-                                row['Jalur Masuk'],
+                                row['angkatan'], 
+                                row['program_studi'],
+                                row['jalur_masuk'],
                                 row['Hasil'], 
                                 row['Probabilitas'],
                                 academic_data
