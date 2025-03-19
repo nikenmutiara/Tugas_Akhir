@@ -33,7 +33,7 @@ def show_dashboard():
         padding: 10px;
     }
     .metric-card {
-        background: #91A0B3;
+        background: #BACBE0;
         border-radius: 8px;
         padding: 10px;
         width: calc(33.30% - 76px);
@@ -72,7 +72,7 @@ def show_dashboard():
 
     /* New styles for dashboard containers */
     .dashboard-container {
-        background: #91A0B3;
+        background: #BACBE0;
         border-radius: 8px;
         padding: 15px;
         margin: 10px 0;
