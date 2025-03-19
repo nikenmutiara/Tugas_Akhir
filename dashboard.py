@@ -192,7 +192,7 @@ def show_dashboard():
     # Modified section for student distribution by entry year
     container_start = """
     <div class="dashboard-container">
-        <div class="container-header">Jumlah Mahasiswa Berdasarkan Tahun Masuk</div>
+        <div class="container-header">Jumlah Mahasiswa Berdasarkan Angkatan</div>
         <div class="progress-container">
     """
     st.markdown(container_start, unsafe_allow_html=True)
@@ -201,10 +201,10 @@ def show_dashboard():
     if engine:
         with engine.connect() as connection:
             query = text("""
-                SELECT `Tahun Masuk`, COUNT(*) as jumlah
+                SELECT `angkatan`, COUNT(*) as jumlah
                 FROM mahasiswa
-                GROUP BY `Tahun Masuk`
-                ORDER BY `Tahun Masuk`
+                GROUP BY `angkatan`
+                ORDER BY `angkatan`
             """)
             year_data = pd.DataFrame(connection.execute(query).fetchall(), columns=['Tahun', 'Jumlah'])
             

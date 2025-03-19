@@ -15,7 +15,7 @@ DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
 #DATABASE_URL = "mysql+pymysql://sql7766198:u1VYyGNmaQ@sql7.freesqldatabase.com/sql7766198"
 engine = create_engine(DATABASE_URL)
 
-def save_prediction_to_db(engine, nama, nim, tahun_masuk, jalur_masuk, hasil, probabilitas, ips_data):
+def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_studi, hasil, probabilitas, academic_data):
     try:
         with engine.connect() as connection:
             # Get admin_id from session state
@@ -42,14 +42,15 @@ def save_prediction_to_db(engine, nama, nim, tahun_masuk, jalur_masuk, hasil, pr
             if not mahasiswa_result:
                 mahasiswa_query = text("""
                     INSERT INTO `mahasiswa` 
-                    (Nama, NIM, `Tahun Masuk`, `Jalur Masuk`)
-                    VALUES (:nama, :nim, :tahun_masuk, :jalur_masuk)
+                    (nama, NIM, `Angkatan`, `program_studi`, `jalur_masuk`)
+                    VALUES (:nama, :nim, :angkatan, :program_studi, :jalur_masuk)
                 """)
                 connection.execute(mahasiswa_query, {
                     "nama": nama, 
                     "nim": nim, 
-                    "tahun_masuk": tahun_masuk, 
-                    "jalur_masuk": jalur_masuk
+                    "angkatan": angkatan, 
+                    "jalur_masuk": jalur_masuk,
+                    "program_studi": program_studi
                 })
                 # Get the newly inserted student's ID
                 mahasiswa_result = connection.execute(mahasiswa_check_query, {"nim": nim}).fetchone()
@@ -92,19 +93,20 @@ def save_prediction_to_db(engine, nama, nim, tahun_masuk, jalur_masuk, hasil, pr
             if riwayat_result[0] == 0:
                 riwayat_query = text("""
                     INSERT INTO `riwayat_akademik` 
-                    (id_mahasiswa, ips_1, ips_2, ips_3, ips_4, ips_5, ips_6, ips_7, ipks_7)
-                    VALUES (:id_mahasiswa, :ips_1, :ips_2, :ips_3, :ips_4, :ips_5, :ips_6, :ips_7, :ipks_7)
+                    (id_mahasiswa, ips_1, ips_2, ips_3, ips_4, ips_5, ips_6, ips_7, ipks_7, sks_7)
+                    VALUES (:id_mahasiswa, :ips_1, :ips_2, :ips_3, :ips_4, :ips_5, :ips_6, :ips_7, :ipks_7, :sks_7)
                 """)
                 connection.execute(riwayat_query, {
                     "id_mahasiswa": id_mahasiswa,
-                    "ips_1": ips_data[0],
-                    "ips_2": ips_data[1],
-                    "ips_3": ips_data[2],
-                    "ips_4": ips_data[3],
-                    "ips_5": ips_data[4],
-                    "ips_6": ips_data[5],
-                    "ips_7": ips_data[6],
-                    "ipks_7": ips_data[7]
+                    "ips_1": academic_data[1],  # IPS1
+                    "ips_2": academic_data[2],  # IPS2
+                    "ips_3": academic_data[3],  # IPS3
+                    "ips_4": academic_data[4],  # IPS4
+                    "ips_5": academic_data[5],  # IPS5
+                    "ips_6": academic_data[6],  # IPS6
+                    "ips_7": academic_data[7],  # IPS7
+                    "ipks_7": academic_data[0], # IPKS7
+                    "sks_7": academic_data[8]   # SKS7
                 })
 
             # Commit the transaction
@@ -123,10 +125,16 @@ def run_prediction():
         # Input manual
         nama = st.text_input('Nama')
         nim = st.text_input('NIM')
-        tahun_masuk = st.text_input('Tahun Masuk')
-        jalur_masuk = st.text_input('Jalur Masuk')
+        angkatan = st.text_input('Angkatan')
+        
+        # Dropdown untuk jalur masuk
+        jalur_masuk_options = ['SBMPTN', 'SNMPTN', 'Mandiri', 'Beasiswa', 'Lainnya']
+        jalur_masuk = st.selectbox('Jalur Masuk', jalur_masuk_options)
+        
+        # Input Program Studi
+        program_studi = st.text_input('Program Studi')
     
-        # Input data
+        # Input data akademik
         IPKS7 = st.text_input('Indeks Prestasi Kumulatif Semester 7 (IPKS7)')
         IPS1 = st.text_input('Indeks Prestasi Semester 1 (IPS1)')
         IPS2 = st.text_input('Indeks Prestasi Semester 2 (IPS2)')
@@ -135,20 +143,33 @@ def run_prediction():
         IPS5 = st.text_input('Indeks Prestasi Semester 5 (IPS5)')
         IPS6 = st.text_input('Indeks Prestasi Semester 6 (IPS6)')
         IPS7 = st.text_input('Indeks Prestasi Semester 7 (IPS7)')
+        SKS7 = st.text_input('Total SKS Semester 7')
 
         if st.button('Klasifikasi Status Mahasiswa'):
             try:
                 # Validasi input manual
-                input_data = [
+                input_numerical_data = [
                     float(IPKS7), float(IPS1), float(IPS2), float(IPS3),
-                    float(IPS4), float(IPS5), float(IPS6), float(IPS7)
+                    float(IPS4), float(IPS5), float(IPS6), float(IPS7), float(SKS7)
                 ]
-
-                # Normalize the data
-                input_normalized = scaler.transform([input_data])
-
+                
+                # Encode jalur masuk jika diperlukan (one-hot encoding atau encoding lainnya)
+                # Misalnya jika menggunakan One-Hot Encoding untuk jalur masuk:
+                jalur_masuk_encoded = [1 if jalur == jalur_masuk else 0 for jalur in jalur_masuk_options]
+                
+                # Gabungkan semua fitur
+                input_data = input_numerical_data + jalur_masuk_encoded + [program_studi]
+                
+                # Normalize the numerical data (sesuaikan dengan cara preprocessing yang digunakan saat training)
+                # Catatan: Di sini asumsinya scaler hanya untuk data numerik, sesuaikan dengan preprocessing Anda
+                numerical_normalized = scaler.transform([input_numerical_data])
+                
+                # Gabungkan data yang sudah dinormalisasi dengan fitur kategorik yang sudah diencoding
+                # Untuk contoh ini, kita asumsikan hanya data numerik yang perlu dinormalisasi
+                input_for_prediction = numerical_normalized
+                
                 # Predict using the model
-                DO_predik = DO_model.predict(input_normalized)[0][0]  # Assuming sigmoid activation
+                DO_predik = DO_model.predict(input_for_prediction)[0][0]  # Assuming sigmoid activation
 
                 # Determine prediction result
                 hasil = 'Berpotensi DO' if DO_predik > 0.5 else 'Tidak Berpotensi DO'
@@ -157,15 +178,16 @@ def run_prediction():
                 st.subheader('Hasil Klasifikasi')
                 st.write(f"Nama: {nama}")
                 st.write(f"NIM: {nim}")
-                st.write(f"Tahun Masuk: {tahun_masuk}")
+                st.write(f"Angkatan: {angkatan}")
+                st.write(f"Program Studi: {program_studi}")
                 st.write(f"Jalur Masuk: {jalur_masuk}")
                 st.write(f"Hasil: {hasil}")
                 st.write(f"Probabilitas: {DO_predik:.2f}")
 
                 # Simpan ke database dengan data riwayat akademik
                 success, message = save_prediction_to_db(
-                    engine, nama, nim, tahun_masuk, jalur_masuk, 
-                    hasil, DO_predik, input_data
+                    engine, nama, nim, angkatan, jalur_masuk, program_studi,
+                    hasil, DO_predik, input_numerical_data
                 )
                 if success:
                     st.success(message)
@@ -191,36 +213,60 @@ def run_prediction():
 
                 st.write("Data yang diunggah:", data.head())
 
-                # Validasi kolom
-                required_columns = ['Nama', 'NIM', 'Tahun Masuk', 'Jalur Masuk', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
+                # Validasi kolom yang dibutuhkan
+                required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
+                                   'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7', 'SKS7']
                 ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
             
                 if all(col in data.columns for col in required_columns):
-                    #pembersihan untuk Jalur Masuk
+                    # Pembersihan untuk kolom kategorik
                     data['Jalur Masuk'] = data['Jalur Masuk'].fillna('Unknown')
+                    data['Program Studi'] = data['Program Studi'].fillna('Unknown')
 
                     # Mengganti nilai '#N/A' dengan NaN agar dapat diinterpolasi
-                    data[ips_columns + ['IPKS7']] = data[ips_columns + ['IPKS7']].replace('#N/A', pd.NA)
+                    numerical_columns = ips_columns + ['IPKS7', 'SKS7']
+                    data[numerical_columns] = data[numerical_columns].replace('#N/A', pd.NA)
 
                     # Pastikan semua kolom numerik
-                    data[ips_columns + ['IPKS7']] = data[ips_columns + ['IPKS7']].apply(pd.to_numeric, errors='coerce')
+                    data[numerical_columns] = data[numerical_columns].apply(pd.to_numeric, errors='coerce')
 
-                    # Interpolasi horizontal untuk IPS1 hingga IPS7 & vertikal untuk kolom IPKS7
+                    # Interpolasi horizontal untuk IPS1 hingga IPS7 & vertikal untuk kolom IPKS7 dan SKS7
                     data[ips_columns] = data[ips_columns].interpolate(method='linear', axis=1)
-                    data['IPKS7'] = data['IPKS7'].interpolate(method='index')
+                    data[['IPKS7', 'SKS7']] = data[['IPKS7', 'SKS7']].interpolate(method='index')
 
                     # Pastikan tidak ada NaN lagi setelah interpolasi
-                    data[ips_columns + ['IPKS7']] = data[ips_columns + ['IPKS7']].fillna(0.0)
+                    data[numerical_columns] = data[numerical_columns].fillna(0.0)
 
-                    # Normalize the data
-                    normalized_data = scaler.transform(data[ips_columns + ['IPKS7']])
-
-                    # Predict using the model
-                    DO_predik = DO_model.predict(normalized_data).flatten()  # Assuming sigmoid activation
-
-                    # Add predictions to the data
-                    data['Probabilitas'] = DO_predik
-                    data['Hasil'] = ['Berpotensi DO' if prob > 0.18 else 'Tidak Berpotensi DO' for prob in DO_predik]
+                    # Proses data untuk prediksi
+                    predictions = []
+                    probabilities = []
+                    
+                    for _, row in data.iterrows():
+                        # Siapkan data numerik
+                        numerical_data = [
+                            row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'],
+                            row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7'], row['SKS7']
+                        ]
+                        
+                        # Encode jalur masuk jika diperlukan (simplifkasi, sesuaikan dengan preprocessing Anda)
+                        jalur_masuk_encoded = [1 if jalur == row['Jalur Masuk'] else 0 for jalur in jalur_masuk_options]
+                        
+                        # Gabungkan semua fitur
+                        input_data = numerical_data + jalur_masuk_encoded + [row['Program Studi']]
+                        
+                        # Normalize menggunakan scaler (sesuaikan dengan cara preprocessing Anda)
+                        numerical_normalized = scaler.transform([numerical_data])
+                        
+                        # Predict
+                        prob = DO_model.predict(numerical_normalized)[0][0]
+                        result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
+                        
+                        probabilities.append(prob)
+                        predictions.append(result)
+                    
+                    # Tambahkan hasil ke dataframe
+                    data['Probabilitas'] = probabilities
+                    data['Hasil'] = predictions
 
                     # Display the predictions
                     st.write("Hasil Klasifikasi:", data)
@@ -232,20 +278,21 @@ def run_prediction():
 
                     with engine.connect() as connection:
                         for _, row in data.iterrows():
-                            ips_data = [
-                                row['IPS1'], row['IPS2'], row['IPS3'], row['IPS4'], 
-                                row['IPS5'], row['IPS6'], row['IPS7'], row['IPKS7']
+                            academic_data = [
+                                row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
+                                row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7'], row['SKS7']
                             ]
                             # Simpan prediksi dan cek duplikasi
                             success, message = save_prediction_to_db(
                                 engine,
                                 row['Nama'], 
                                 row['NIM'], 
-                                row['Tahun Masuk'], 
+                                row['Angkatan'], 
+                                row['Program Studi'],
                                 row['Jalur Masuk'],
                                 row['Hasil'], 
                                 row['Probabilitas'],
-                                ips_data
+                                academic_data
                             )
                             if success:
                                 berhasil_disimpan += 1
@@ -257,5 +304,8 @@ def run_prediction():
                         st.warning(f"Dataset sudah ada didatabase, dari total {total_mahasiswa} mahasiswa, {berhasil_disimpan} berhasil disimpan dan {gagal_disimpan} gagal disimpan.")
                     else:
                         st.success(f"Semua {total_mahasiswa} mahasiswa berhasil disimpan.")
+                else:
+                    missing_columns = [col for col in required_columns if col not in data.columns]
+                    st.error(f"File tidak memiliki semua kolom yang diperlukan. Kolom yang tidak ada: {', '.join(missing_columns)}")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses file: {str(e)}")
