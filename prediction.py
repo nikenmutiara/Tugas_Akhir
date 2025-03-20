@@ -311,11 +311,11 @@ def run_prediction():
                             # Simpan prediksi dan cek duplikasi
                             success, message = save_prediction_to_db(
                                 engine,
-                                row['nama'], 
+                                row['Nama'], 
                                 row['NIM'], 
-                                row['angkatan'], 
-                                row['program_studi'],
-                                row['jalur_masuk'],
+                                row['Angkatan'], 
+                                row['Program Studi'],
+                                row['Jalur Masuk'],
                                 row['Hasil'], 
                                 row['Probabilitas'],
                                 academic_data
