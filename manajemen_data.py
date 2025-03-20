@@ -308,8 +308,8 @@ def manage_data_page():
                         try:
                             with engine.begin() as conn:
                                 query = text("""
-                                    INSERT INTO mahasiswa (Nama, NIM, program_studi, `Angkatan`, `Jalur Masuk`)
-                                    VALUES (:nama, :nim, :program_studi, :Angkatan, :jalur_masuk)
+                                    INSERT INTO mahasiswa (Nama, NIM, program_studi, `Angkatan`, jalur_masuk)
+                                    VALUES (:nama, :nim, :program_studi, :angkatan, :jalur_masuk)
                                 """)
                                 result = conn.execute(query, {
                                     "nama": nama,
