@@ -283,9 +283,9 @@ def run_prediction():
                         
                         # Predict menggunakan model dengan input yang sudah benar bentuknya
                         DO_predik = DO_model.predict(input_sequence)[0][0]
-                        result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
+                        result = 'Berpotensi DO' if DO_predik > 0.5 else 'Tidak Berpotensi DO'
                         
-                        probabilities.append(prob)
+                        probabilities.append(DO_predik)
                         predictions.append(result)
                     
                     # Tambahkan hasil ke dataframe
