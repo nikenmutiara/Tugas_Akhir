@@ -7,8 +7,8 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 # Load model and scaler
-DO_model = pickle.load(open('DO_model.sav', 'rb'))  # Assumes keras model
-scaler = pickle.load(open('Scaler.pkl', 'rb'))
+DO_model = pickle.load(open('model2.h5', 'rb'))  # Assumes keras model
+scaler = pickle.load(open('Scaler2.pkl', 'rb'))
 
 # Database connection setup
 DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
