@@ -92,6 +92,9 @@ def delete_mahasiswa(id_mahasiswa, engine):
             verify_query = text("SELECT * FROM mahasiswa WHERE id_mahasiswa = :id")
             result = connection.execute(verify_query, {"id": id_mahasiswa})
             mahasiswa = result.fetchone()
+            
+            if not mahasiswa:
+                return False, "Data mahasiswa tidak ditemukan"
 
             # Siapkan data lama untuk logging
             data_lama = {
@@ -101,6 +104,25 @@ def delete_mahasiswa(id_mahasiswa, engine):
                 "Program Studi": mahasiswa[4],
                 "Jalur Masuk": mahasiswa[5]
             }
+
+            # 1. Cek apakah ada data terkait di tabel riwayat_akademik
+            check_related_query = text("SELECT COUNT(*) FROM riwayat_akademik WHERE id_mahasiswa = :id")
+            related_count = connection.execute(check_related_query, {"id": id_mahasiswa}).scalar()
+            
+            if related_count > 0:
+                # Opsi 1: Hapus data terkait terlebih dahulu (CASCADE delete)
+                delete_related_query = text("DELETE FROM riwayat_akademik WHERE id_mahasiswa = :id")
+                connection.execute(delete_related_query, {"id": id_mahasiswa})
+                print(f"Menghapus {related_count} data terkait di riwayat_akademik")
+                
+                # Opsi lain: Periksa tabel prediksi juga
+                check_prediksi_query = text("SELECT COUNT(*) FROM prediksi WHERE id_mahasiswa = :id")
+                prediksi_count = connection.execute(check_prediksi_query, {"id": id_mahasiswa}).scalar()
+                
+                if prediksi_count > 0:
+                    delete_prediksi_query = text("DELETE FROM prediksi WHERE id_mahasiswa = :id")
+                    connection.execute(delete_prediksi_query, {"id": id_mahasiswa})
+                    print(f"Menghapus {prediksi_count} data terkait di prediksi")
 
             # Logging penghapusan
             log_query = text("""
@@ -124,20 +146,23 @@ def delete_mahasiswa(id_mahasiswa, engine):
                 print(f"GAGAL MENYIMPAN LOG: {log_error}")
                 import traceback
                 traceback.print_exc()
-                return False, f"Gagal menyimpan log: {str(log_error)}"
+                # Tetap lanjutkan proses penghapusan meskipun log gagal
 
             # Hapus data mahasiswa
             delete_query = text("DELETE FROM mahasiswa WHERE id_mahasiswa = :id")
             delete_result = connection.execute(delete_query, {"id": id_mahasiswa})
 
             if delete_result.rowcount > 0:
-                return True, "Data berhasil dihapus!"
+                return True, "Data berhasil dihapus beserta data terkait!"
             else:
                 return False, "Gagal menghapus data mahasiswa"
 
         except Exception as e:
             import traceback
             traceback.print_exc()
+            # Berikan pesan yang lebih jelas tentang apa yang menyebabkan error
+            if "foreign key constraint fails" in str(e):
+                return False, "Gagal menghapus: Data mahasiswa masih digunakan di tabel lain. Hapus data terkait terlebih dahulu."
             return False, f"Error saat menghapus data: {str(e)}"
         
 # Jalur Masuk yang baru
