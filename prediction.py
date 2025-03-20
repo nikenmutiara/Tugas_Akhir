@@ -251,32 +251,38 @@ def run_prediction():
                             row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
                         
-                        # Normalize menggunakan scaler (sesuaikan dengan cara preprocessing Anda)
-                        numerical_normalized = scaler.transform([numerical_data])
-
+                        # Normalisasi semua data numerik
+                        numerical_normalized = scaler.transform([input_numerical_data])
+                        
                         # Pisahkan nilai IPS dari fitur lainnya
                         ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
                         static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
-                       
-                        # Encode jalur masuk jika diperlukan (simplifkasi, sesuaikan dengan preprocessing Anda)
-                        jalur_masuk_encoded = [1 if jalur == row['Jalur Masuk'] else 0 for jalur in jalur_masuk_options]
                         
-                        # Gabungkan static_features dengan jalur_masuk_encoded
-                        all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
+                        # Encode jalur masuk
+                        jalur_masuk_encoded = [1 if jalur == jalur_masuk else 0 for jalur in jalur_masuk_options]
                         
-                        # Buat array 3D untuk input LSTM
-                        input_sequence = np.zeros((1, 7, 1 + len(all_static_features)))
+                        # Buat array 3D untuk input LSTM dengan 19 fitur per timestep
+                        # Format: (1, 7, 19)
+                        input_sequence = np.zeros((1, 7, 19))
                         
                         # Isi channel pertama dengan nilai IPS per semester
                         input_sequence[0, :, 0] = ips_values
                         
-                        # Isi channel lainnya dengan fitur statis
-                        for i in range(len(all_static_features)):
-                            input_sequence[0, :, i+1] = all_static_features[i]
+                        # Isi fitur statis yang sama untuk setiap timestep
+                        # Contoh: jika Anda memiliki 2 fitur numerik (IPKS7, SKS7) dan 5 jalur masuk
+                        # Maka total fitur statis = 7, kita perlu mendistribusikannya ke 18 slot yang tersisa
+                        static_all = np.concatenate([static_features, jalur_masuk_encoded])
                         
+                        # Replika fitur statis untuk mengisi hingga 19 fitur
+                        # Ini adalah pendekatan untuk mengisi slot, sesuaikan dengan struktur pelatihan model Anda
+                        for i in range(len(static_all)):
+                            input_sequence[0, :, i+1] = static_all[i]
                         
-                        # Predict
-                        prob = DO_model.predict(input_sequence)[0][0]
+                        # Jika masih ada slot kosong, isi dengan nilai 0
+                        # (atau nilai default yang digunakan saat pelatihan)
+                        
+                        # Predict menggunakan model dengan input yang sudah benar bentuknya
+                        DO_predik = DO_model.predict(input_sequence)[0][0]
                         result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
                         
                         probabilities.append(prob)
