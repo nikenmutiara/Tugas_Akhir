@@ -101,15 +101,15 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
                 """)
                 connection.execute(riwayat_query, {
                     "id_mahasiswa": id_mahasiswa,
-                    "ips_1": academic_data[1],  # IPS1
-                    "ips_2": academic_data[2],  # IPS2
-                    "ips_3": academic_data[3],  # IPS3
-                    "ips_4": academic_data[4],  # IPS4
-                    "ips_5": academic_data[5],  # IPS5
-                    "ips_6": academic_data[6],  # IPS6
-                    "ips_7": academic_data[7],  # IPS7
-                    "ipks_7": academic_data[0], # IPKS7
-                    "sks_7": academic_data[8]   # SKS7
+                    "ips_1": academic_data[2],  # IPS1
+                    "ips_2": academic_data[3],  # IPS2
+                    "ips_3": academic_data[4],  # IPS3
+                    "ips_4": academic_data[5],  # IPS4
+                    "ips_5": academic_data[6],  # IPS5
+                    "ips_6": academic_data[7],  # IPS6
+                    "ips_7": academic_data[8],  # IPS7
+                    "ipks_7": academic_data[1], # IPKS7
+                    "sks_7": academic_data[0]   # SKS7
                 })
 
             # Commit the transaction
@@ -130,12 +130,37 @@ def run_prediction():
         nim = st.text_input('NIM')
         angkatan = st.text_input('Angkatan')
         
-        # Dropdown untuk jalur masuk
-        jalur_masuk_options = ['SBMPTN', 'SNMPTN', 'Mandiri', 'Beasiswa', 'Lainnya']
-        jalur_masuk = st.selectbox('Jalur Masuk', jalur_masuk_options)
+        # Dropdown untuk program studi (updated)
+        program_studi_options = {
+            '31201': 'Teknik Pertambangan',
+            '33201': 'Teknik Geofisika',
+            '34201': 'Teknik Geologi',
+            '38201': 'Oseanografi',
+            '44201': 'Matematika',
+            '45201': 'Fisika',
+            '46201': 'Biologi',
+            '49201': 'Statistika',
+            '47201': 'Kimia',
+            '51201': 'Geografi',
+            '54207': 'Bioteknologi',
+            '59202': 'Ilmu Komputer'
+        }
+        program_studi_code = st.selectbox('Program Studi', options=list(program_studi_options.keys()), format_func=lambda x: f"{x} - {program_studi_options[x]}")
+        program_studi = program_studi_code  # Store the code in the database
         
-        # Input Program Studi
-        program_studi = st.text_input('Program Studi')
+        # Dropdown untuk jalur masuk (updated)
+        jalur_masuk_options = {
+            '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
+            '4': 'Prestasi',
+            '9': 'Program Internasional',
+            '11': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
+            '12': 'Seleksi Mandiri',
+            '13': 'Ujian Masuk Bersama Lainnya',
+            '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
+            '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
+        }
+        jalur_masuk_code = st.selectbox('Jalur Masuk', options=list(jalur_masuk_options.keys()), format_func=lambda x: f"{x} - {jalur_masuk_options[x]}")
+        jalur_masuk = jalur_masuk_code  # Store the code in the database
     
         # Input data akademik
         SKS7 = st.text_input('Total SKS Semester 7')
@@ -156,8 +181,11 @@ def run_prediction():
                     float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
                 
-                # Encode jalur masuk
-                jalur_masuk_encoded = [1 if jalur == jalur_masuk else 0 for jalur in jalur_masuk_options]
+                # Get jalur masuk code list for one-hot encoding
+                jalur_masuk_codes = list(jalur_masuk_options.keys())
+                
+                # Encode jalur masuk using one-hot encoding
+                jalur_masuk_encoded = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
                 
                 # Normalisasi semua data numerik
                 numerical_normalized = scaler.transform([input_numerical_data])
@@ -191,8 +219,8 @@ def run_prediction():
                 st.write(f"Nama: {nama}")
                 st.write(f"NIM: {nim}")
                 st.write(f"Angkatan: {angkatan}")
-                st.write(f"Program Studi: {program_studi}")
-                st.write(f"Jalur Masuk: {jalur_masuk}")
+                st.write(f"Program Studi: {program_studi_code} - {program_studi_options[program_studi_code]}")
+                st.write(f"Jalur Masuk: {jalur_masuk_code} - {jalur_masuk_options[jalur_masuk_code]}")
                 st.write(f"Hasil: {hasil}")
                 st.write(f"Probabilitas: {DO_predik:.2f}")
 
@@ -249,6 +277,9 @@ def run_prediction():
                     # Pastikan tidak ada NaN lagi setelah interpolasi
                     data[numerical_columns] = data[numerical_columns].fillna(0.0)
 
+                    # Get jalur masuk code list for one-hot encoding
+                    jalur_masuk_codes = list(jalur_masuk_options.keys())
+                    
                     # Proses data untuk prediksi
                     predictions = []
                     probabilities = []
@@ -268,7 +299,8 @@ def run_prediction():
                         static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
                         
                         # Encode jalur masuk
-                        jalur_masuk_encoded = [1 if jalur == row['Jalur Masuk'] else 0 for jalur in jalur_masuk_options]
+                        jalur_masuk = str(row['Jalur Masuk'])
+                        jalur_masuk_encoded = [1 if code == jalur_masuk else 0 for code in jalur_masuk_codes]
                         
                         # Gabungkan static_features dengan jalur_masuk_encoded
                         all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
@@ -314,8 +346,8 @@ def run_prediction():
                                 row['Nama'], 
                                 row['NIM'], 
                                 row['Angkatan'], 
-                                row['Program Studi'],
-                                row['Jalur Masuk'],
+                                str(row['Jalur Masuk']), 
+                                str(row['Program Studi']),
                                 row['Hasil'], 
                                 row['Probabilitas'],
                                 academic_data

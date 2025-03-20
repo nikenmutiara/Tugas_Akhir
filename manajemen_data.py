@@ -140,8 +140,33 @@ def delete_mahasiswa(id_mahasiswa, engine):
             traceback.print_exc()
             return False, f"Error saat menghapus data: {str(e)}"
         
-# Jalur Masuk sesuai dengan jalur_masuk_options di kode prediksi
-jalur_masuk_options = ['SBMPTN', 'SNMPTN', 'Mandiri', 'Beasiswa', 'Lainnya']
+# Jalur Masuk yang baru
+jalur_masuk_options = {
+    '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
+    '4': 'Prestasi',
+    '9': 'Program Internasional',
+    '11': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
+    '12': 'Seleksi Mandiri',
+    '13': 'Ujian Masuk Bersama Lainnya',
+    '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
+    '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
+}
+
+# Program Studi yang baru
+program_studi_options = {
+    '31201': 'Teknik Pertambangan',
+    '33201': 'Teknik Geofisika',
+    '34201': 'Teknik Geologi',
+    '38201': 'Oseanografi',
+    '44201': 'Matematika',
+    '45201': 'Fisika',
+    '46201': 'Biologi',
+    '49201': 'Statistika',
+    '47201': 'Kimia',
+    '51201': 'Geografi',
+    '54207': 'Bioteknologi',
+    '59202': 'Ilmu Komputer'
+}
 
 hasil_klasifikasi_mapping = {
     0: "Tidak Berpotensi DO",
@@ -233,13 +258,25 @@ def manage_data_page():
                 with st.form("input_data"):
                     nama = st.text_input("Nama", key="input_nama")
                     nim = st.text_input("NIM", key="input_nim")
-                    program_studi = st.text_input("Program Studi", key="input_prodi")
+                    
+                    # Program Studi sebagai selectbox dengan kode dan nama
+                    program_studi_kode = st.selectbox(
+                        "Program Studi",
+                        options=list(program_studi_options.keys()),
+                        format_func=lambda x: f"{x} - {program_studi_options[x]}",
+                        key="input_prodi"
+                    )
+                    
                     angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, key="input_tahun")
-                    jalur_masuk = st.selectbox(
+                    
+                    # Jalur Masuk sebagai selectbox dengan kode dan nama
+                    jalur_masuk_kode = st.selectbox(
                         "Jalur Masuk", 
-                        options=jalur_masuk_options,
+                        options=list(jalur_masuk_options.keys()),
+                        format_func=lambda x: f"{x} - {jalur_masuk_options[x]}",
                         key="input_jalur"
                     )
+                    
                     submit_button = st.form_submit_button("Submit")
                     
                     if submit_button:
@@ -252,18 +289,18 @@ def manage_data_page():
                                 result = conn.execute(query, {
                                     "nama": nama,
                                     "nim": nim,
-                                    "program_studi": program_studi,
+                                    "program_studi": program_studi_kode,  # Simpan kode program studi
                                     "angkatan": angkatan,
-                                    "jalur_masuk": jalur_masuk
+                                    "jalur_masuk": jalur_masuk_kode  # Simpan kode jalur masuk
                                 })
                                 
                                 last_id = result.lastrowid
                                 data_baru = {
                                     "Nama": nama,
                                     "NIM": nim,
-                                    "Program Studi": program_studi,
+                                    "Program Studi": f"{program_studi_kode} - {program_studi_options[program_studi_kode]}",
                                     "Angkatan": angkatan,
-                                    "Jalur Masuk": jalur_masuk
+                                    "Jalur Masuk": f"{jalur_masuk_kode} - {jalur_masuk_options[jalur_masuk_kode]}"
                                 }
                                 log_change(conn, last_id, "INSERT", None, data_baru, "Data baru ditambahkan")
                                 
@@ -272,12 +309,34 @@ def manage_data_page():
                         except Exception as e:
                             st.error(f"Error: {str(e)}")
 
-                    # Bagian Lihat Data
-                    st.markdown("<div class='content-card'><h4>Lihat Data Mahasiswa</h4>", unsafe_allow_html=True)
-                    if not data_mahasiswa.empty:
-                        st.dataframe(data_mahasiswa)
-                    else:
-                        st.info("Belum ada data mahasiswa")
+                # Bagian Lihat Data
+                st.markdown("<div class='content-card'><h4>Lihat Data Mahasiswa</h4>", unsafe_allow_html=True)
+                if not data_mahasiswa.empty:
+                    # Tambahkan kolom tampilan dengan nama lengkap untuk Program Studi dan Jalur Masuk
+                    data_display = data_mahasiswa.copy()
+                    
+                    # Fungsi untuk mendapatkan nama lengkap program studi
+                    def get_prodi_name(kode):
+                        if kode in program_studi_options:
+                            return f"{kode} - {program_studi_options[kode]}"
+                        return kode
+                    
+                    # Fungsi untuk mendapatkan nama lengkap jalur masuk
+                    def get_jalur_name(kode):
+                        if kode in jalur_masuk_options:
+                            return f"{kode} - {jalur_masuk_options[kode]}"
+                        return kode
+                    
+                    # Terapkan fungsi ke kolom yang relevan
+                    if 'program_studi' in data_display.columns:
+                        data_display['program_studi_display'] = data_display['program_studi'].astype(str).apply(get_prodi_name)
+                    
+                    if 'jalur_masuk' in data_display.columns:
+                        data_display['jalur_masuk_display'] = data_display['jalur_masuk'].astype(str).apply(get_jalur_name)
+                    
+                    st.dataframe(data_display)
+                else:
+                    st.info("Belum ada data mahasiswa")
 
             # Tab 2: Update/Hapus Data
             with tab2:
@@ -289,14 +348,29 @@ def manage_data_page():
 
                     update_nama = st.text_input("Nama", current_data["nama"])
                     update_nim = st.text_input("NIM", current_data["NIM"])
-                    update_program_studi = st.text_input("Program Studi", current_data["program_studi"])
+                    
+                    # Tampilkan program studi sebagai selectbox
+                    current_prodi = str(current_data["program_studi"])
+                    update_program_studi_kode = st.selectbox(
+                        "Program Studi",
+                        options=list(program_studi_options.keys()),
+                        format_func=lambda x: f"{x} - {program_studi_options[x]}",
+                        index=list(program_studi_options.keys()).index(current_prodi) if current_prodi in program_studi_options else 0,
+                        key="update_prodi"
+                    )
+                    
                     update_angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, value=int(current_data["angkatan"]))
-                    update_jalur_masuk = st.selectbox(
+                    
+                    # Tampilkan jalur masuk sebagai selectbox
+                    current_jalur = str(current_data["jalur_masuk"])
+                    update_jalur_masuk_kode = st.selectbox(
                         "Jalur Masuk", 
-                        options=jalur_masuk_options,
-                        index=jalur_masuk_options.index(current_data["Jalur Masuk"]) if current_data["jalur_masuk"] in jalur_masuk_options else 0,
+                        options=list(jalur_masuk_options.keys()),
+                        format_func=lambda x: f"{x} - {jalur_masuk_options[x]}",
+                        index=list(jalur_masuk_options.keys()).index(current_jalur) if current_jalur in jalur_masuk_options else 0,
                         key="update_jalur"
                     )
+                    
                     action_button = st.radio("Pilih aksi", ("Update", "Hapus"))
 
                     if action_button == "Update" and st.button("Update Data"):
@@ -310,20 +384,29 @@ def manage_data_page():
                                 conn.execute(query, {
                                     "nama": update_nama,
                                     "nim": update_nim,
-                                    "program_studi": update_program_studi,
+                                    "program_studi": update_program_studi_kode,
                                     "angkatan": update_angkatan,
-                                    "jalur_masuk": update_jalur_masuk,
+                                    "jalur_masuk": update_jalur_masuk_kode,
                                     "id": id_mahasiswa
                                 })
+                                
+                                data_lama = {
+                                    "Nama": current_data["nama"],
+                                    "NIM": current_data["NIM"],
+                                    "Program Studi": f"{current_data['program_studi']} - {program_studi_options.get(current_prodi, current_prodi)}",
+                                    "Angkatan": current_data["angkatan"],
+                                    "Jalur Masuk": f"{current_data['jalur_masuk']} - {jalur_masuk_options.get(current_jalur, current_jalur)}"
+                                }
                                 
                                 data_baru = {
                                     "Nama": update_nama,
                                     "NIM": update_nim,
-                                    "Program Studi": update_program_studi,
+                                    "Program Studi": f"{update_program_studi_kode} - {program_studi_options[update_program_studi_kode]}",
                                     "Angkatan": update_angkatan,
-                                    "Jalur Masuk": update_jalur_masuk
+                                    "Jalur Masuk": f"{update_jalur_masuk_kode} - {jalur_masuk_options[update_jalur_masuk_kode]}"
                                 }
-                                log_change(conn, id_mahasiswa, "UPDATE", current_data, data_baru, "Data mahasiswa diperbarui")
+                                
+                                log_change(conn, id_mahasiswa, "UPDATE", data_lama, data_baru, "Data mahasiswa diperbarui")
                                 
                             st.success("Data berhasil diperbarui!")
                             st.rerun()
