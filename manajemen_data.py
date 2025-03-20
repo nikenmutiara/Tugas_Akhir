@@ -403,7 +403,7 @@ def manage_data_page():
                             with engine.begin() as conn:
                                 query = text("""
                                     UPDATE mahasiswa
-                                    SET Nama = :nama, NIM = :nim, program_studi = :program_studi, `Angkatan` = :angkatan, `Jalur Masuk` = :jalur_masuk
+                                    SET Nama = :nama, NIM = :nim, program_studi = :program_studi, `Angkatan` = :angkatan, jalur_masuk = :jalur_masuk
                                     WHERE id_mahasiswa = :id
                                 """)
                                 conn.execute(query, {
