@@ -1,4 +1,5 @@
 import streamlit as st
+import numpy as np
 import pickle
 import pandas as pd
 import tensorflow as tf
@@ -250,17 +251,32 @@ def run_prediction():
                             row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
                         
+                        # Normalize menggunakan scaler (sesuaikan dengan cara preprocessing Anda)
+                        numerical_normalized = scaler.transform([numerical_data])
+
+                        # Pisahkan nilai IPS dari fitur lainnya
+                        ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
+                        static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
+                       
                         # Encode jalur masuk jika diperlukan (simplifkasi, sesuaikan dengan preprocessing Anda)
                         jalur_masuk_encoded = [1 if jalur == row['Jalur Masuk'] else 0 for jalur in jalur_masuk_options]
                         
-                        # Gabungkan semua fitur
-                        input_data = numerical_data + jalur_masuk_encoded + [row['Program Studi']]
+                        # Gabungkan static_features dengan jalur_masuk_encoded
+                        all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
                         
-                        # Normalize menggunakan scaler (sesuaikan dengan cara preprocessing Anda)
-                        numerical_normalized = scaler.transform([numerical_data])
+                        # Buat array 3D untuk input LSTM
+                        input_sequence = np.zeros((1, 7, 1 + len(all_static_features)))
+                        
+                        # Isi channel pertama dengan nilai IPS per semester
+                        input_sequence[0, :, 0] = ips_values
+                        
+                        # Isi channel lainnya dengan fitur statis
+                        for i in range(len(all_static_features)):
+                            input_sequence[0, :, i+1] = all_static_features[i]
+                        
                         
                         # Predict
-                        prob = DO_model.predict(numerical_normalized)[0][0]
+                        prob = DO_model.predict(input_sequence)[0][0]
                         result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
                         
                         probabilities.append(prob)
