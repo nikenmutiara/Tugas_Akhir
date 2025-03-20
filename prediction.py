@@ -1,13 +1,15 @@
 import streamlit as st
 import pickle
 import pandas as pd
+import tensorflow as tf
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
-# Load model and scaler
-DO_model = pickle.load(open('model2.h5', 'rb'))  # Assumes keras model
+# Load model correctly using Keras/TensorFlow (not pickle)
+DO_model = tf.keras.models.load_model('model2.h5')
+# Load scaler with pickle (this is correct)
 scaler = pickle.load(open('Scaler2.pkl', 'rb'))
 
 # Database connection setup
