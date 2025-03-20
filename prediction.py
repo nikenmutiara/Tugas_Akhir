@@ -156,23 +156,32 @@ def run_prediction():
                     float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
                 
-                # Encode jalur masuk jika diperlukan (one-hot encoding atau encoding lainnya)
-                # Misalnya jika menggunakan One-Hot Encoding untuk jalur masuk:
+                # Encode jalur masuk
                 jalur_masuk_encoded = [1 if jalur == jalur_masuk else 0 for jalur in jalur_masuk_options]
                 
-                # Gabungkan semua fitur
-                input_data = input_numerical_data + jalur_masuk_encoded + [program_studi]
-                
-                # Normalize the numerical data (sesuaikan dengan cara preprocessing yang digunakan saat training)
-                # Catatan: Di sini asumsinya scaler hanya untuk data numerik, sesuaikan dengan preprocessing Anda
+                # Normalisasi semua data numerik
                 numerical_normalized = scaler.transform([input_numerical_data])
                 
-                # Gabungkan data yang sudah dinormalisasi dengan fitur kategorik yang sudah diencoding
-                # Untuk contoh ini, kita asumsikan hanya data numerik yang perlu dinormalisasi
-                input_for_prediction = numerical_normalized
+                # Pisahkan nilai IPS dari fitur lainnya
+                ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
+                static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
                 
-                # Predict using the model
-                DO_predik = DO_model.predict(input_for_prediction)[0][0]  # Assuming sigmoid activation
+                # Gabungkan static_features dengan jalur_masuk_encoded
+                all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
+                
+                # Buat array 3D untuk input LSTM: (1, 7, 19)
+                input_sequence = np.zeros((1, 7, 19))
+                
+                # Isi channel pertama dengan nilai IPS per semester
+                input_sequence[0, :, 0] = ips_values
+                
+                # Isi fitur statis untuk setiap timestep
+                # Replikasi fitur statis ke semua timestep
+                for i in range(min(18, len(all_static_features))):
+                    input_sequence[0, :, i+1] = all_static_features[i]
+                
+                # Predict menggunakan model dengan input yang sudah benar bentuknya
+                DO_predik = DO_model.predict(input_sequence)[0][0]
 
                 # Determine prediction result
                 hasil = 'Berpotensi DO' if DO_predik > 0.5 else 'Tidak Berpotensi DO'
@@ -251,41 +260,34 @@ def run_prediction():
                             row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
                         
-                        # Normalisasi semua data numerik
-                        numerical_normalized = scaler.transform([input_numerical_data])
+                        # Normalisasi
+                        numerical_normalized = scaler.transform([numerical_data])
                         
                         # Pisahkan nilai IPS dari fitur lainnya
                         ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
                         static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
                         
                         # Encode jalur masuk
-                        jalur_masuk_encoded = [1 if jalur == jalur_masuk else 0 for jalur in jalur_masuk_options]
+                        jalur_masuk_encoded = [1 if jalur == row['Jalur Masuk'] else 0 for jalur in jalur_masuk_options]
                         
-                        # Buat array 3D untuk input LSTM dengan 19 fitur per timestep
-                        # Format: (1, 7, 19)
+                        # Gabungkan static_features dengan jalur_masuk_encoded
+                        all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
+                        
+                        # Buat array 3D untuk input LSTM
                         input_sequence = np.zeros((1, 7, 19))
                         
                         # Isi channel pertama dengan nilai IPS per semester
                         input_sequence[0, :, 0] = ips_values
                         
-                        # Isi fitur statis yang sama untuk setiap timestep
-                        # Contoh: jika Anda memiliki 2 fitur numerik (IPKS7, SKS7) dan 5 jalur masuk
-                        # Maka total fitur statis = 7, kita perlu mendistribusikannya ke 18 slot yang tersisa
-                        static_all = np.concatenate([static_features, jalur_masuk_encoded])
+                        # Isi fitur statis untuk setiap timestep
+                        for i in range(min(18, len(all_static_features))):
+                            input_sequence[0, :, i+1] = all_static_features[i]
                         
-                        # Replika fitur statis untuk mengisi hingga 19 fitur
-                        # Ini adalah pendekatan untuk mengisi slot, sesuaikan dengan struktur pelatihan model Anda
-                        for i in range(len(static_all)):
-                            input_sequence[0, :, i+1] = static_all[i]
+                        # Predict
+                        prob = DO_model.predict(input_sequence)[0][0]
+                        result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
                         
-                        # Jika masih ada slot kosong, isi dengan nilai 0
-                        # (atau nilai default yang digunakan saat pelatihan)
-                        
-                        # Predict menggunakan model dengan input yang sudah benar bentuknya
-                        DO_predik = DO_model.predict(input_sequence)[0][0]
-                        result = 'Berpotensi DO' if DO_predik > 0.5 else 'Tidak Berpotensi DO'
-                        
-                        probabilities.append(DO_predik)
+                        probabilities.append(prob)
                         predictions.append(result)
                     
                     # Tambahkan hasil ke dataframe
