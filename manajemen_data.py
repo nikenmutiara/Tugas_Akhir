@@ -470,3 +470,7 @@ def manage_data_page():
                     st.info("Belum ada riwayat perubahan.")
         finally:
             connection.close()
+            
+if __name__ == "__main__":
+    # Kode ini hanya akan berjalan jika skrip dijalankan secara langsung
+    manage_data_page()
