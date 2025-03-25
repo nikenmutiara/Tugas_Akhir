@@ -9,9 +9,9 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 # Load model correctly using Keras/TensorFlow (not pickle)
-DO_model = tf.keras.models.load_model('best_lstm_model4.h5')
+DO_model = tf.keras.models.load_model('best_lstm_model5.h5')
 # Load scaler with pickle (this is correct)
-scaler = pickle.load(open('Scaler4.pkl', 'rb'))
+scaler = pickle.load(open('Scaler5.pkl', 'rb'))
 
 # Database connection setup
 DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
