@@ -181,33 +181,32 @@ def run_prediction():
                     float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
                 
+                #get program studi code list for one-hot encoding
+                program_studi_codes = list(program_studi_options.keys())
+
                 # Get jalur masuk code list for one-hot encoding
                 jalur_masuk_codes = list(jalur_masuk_options.keys())
                 
-                # Encode jalur masuk using one-hot encoding
+                # One-hot encoding untuk program studi dan jalur masuk
+                prodi_one_encoded = [1 if code == program_studi_code else 0 for code in program_studi_codes]
                 jalur_masuk_encoded = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
                 
+                # Gabungkan semua fitur dalam urutan yang sama dengan saat training
+                full_features = numerical_data + prodi_one_encoded + jalur_masuk_encoded
+
+                # Pastikan jumlah fitur tepat 25
+                assert len(full_features) == 25, f"Expected 25 features, got {len(full_features)}"
+
                 # Normalisasi semua data numerik
                 numerical_normalized = scaler.transform([input_numerical_data])
-                
-                # Pisahkan nilai IPS dari fitur lainnya
-                ips_columns = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
-                static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
-                
-                # Gabungkan static_features dengan jalur_masuk_encoded
-                all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
-                
+                                   
                 # Buat array 3D untuk input LSTM: (1, 7, 25)
                 input_sequence = np.zeros((1, 7, 25))
-                
-                # Isi channel pertama dengan nilai IPS per semester
-                input_sequence[0, :, 0:9] = numerical_normalized[0, 0:9]  # 9 fitur numerik (IPS dan fitur lainnya)
-                
+                                
                 # Replikasi fitur kategorik ke semua timestep
                 for timestep in range(7):
-                    input_sequence[0, timestep, 9:16] = prodi_one_hot  # 7 fitur one-hot untuk program studi
-                    input_sequence[0, timestep, 16:24] = jalur_masuk_one_hot  # 8 fitur one-hot untuk jalur masuk
-                
+                    input_sequence[0, timestep, :] = numerical_normalized[0, :]
+
                 # Predict menggunakan model dengan input yang sudah benar bentuknya
                 DO_predik = DO_model.predict(input_sequence)[0][0]
 
@@ -276,13 +275,14 @@ def run_prediction():
 
                     # Pastikan tidak ada NaN lagi setelah interpolasi
                     data[numerical_columns] = data[numerical_columns].fillna(0.0)
-
-                    # Get jalur masuk code list for one-hot encoding
-                    jalur_masuk_codes = list(jalur_masuk_options.keys())
                     
                     # Proses data untuk prediksi
                     predictions = []
                     probabilities = []
+
+                    # Gunakan kode yang sudah Anda definisikan
+                    program_studi_codes = list(program_studi_options.keys())
+                    jalur_masuk_codes = list(jalur_masuk_options.keys())
                     
                     for _, row in data.iterrows():
                         # Siapkan data numerik
@@ -291,40 +291,25 @@ def run_prediction():
                             row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
                         
-                        # Gunakan kode yang sudah Anda definisikan
-                        program_studi_codes = list(program_studi_options.keys())
-                        jalur_masuk_codes = list(jalur_masuk_options.keys())
-
-                        prodi_one_hot = [1 if str(row['Program Studi']) == code else 0 for code in program_studi_codes]
-                        jalur_masuk_one_hot = [1 if str(row['Jalur Masuk']) == code else 0 for code in jalur_masuk_codes]
+                        # One-hot encoding untuk program studi dan jalur masuk
+                        prodi_one_hot = [1 if code == program_studi_code else 0 for code in program_studi_codes]
+                        jalur_masuk_one_hot = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
                         
                         # Gabungkan semua fitur
                         full_features = numerical_data + prodi_one_hot + jalur_masuk_one_hot
                         
+                        # Pastikan jumlah fitur tepat 25
+                        assert len(full_features) == 25, f"Expected 25 features, got {len(full_features)}"
+
                         # Normalisasi
                         numerical_normalized = scaler.transform([full_features])
-                        
-                        # Pisahkan nilai IPS dari fitur lainnya
-                        ips_columns = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
-                        static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
-                        
-                        # Encode jalur masuk
-                        jalur_masuk = str(row['Jalur Masuk'])
-                        jalur_masuk_encoded = [1 if code == jalur_masuk else 0 for code in jalur_masuk_codes]
-                        
-                        # Gabungkan static_features dengan jalur_masuk_encoded
-                        all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
-                        
+
                         # Buat array 3D untuk input LSTM
                         input_sequence = np.zeros((1, 7, 25))
-                        
-                        # Isi channel pertama dengan nilai IPS per semester
-                        input_sequence[0, :, 0:9] = numerical_normalized[0, 0:9] # 9 fitur numerik (IPS dan fitur lainnya) 
-                        
+
                         # Replikasi fitur kategorik ke semua timestep
                         for timestep in range(7):
-                            input_sequence[0, timestep, 9:16] = prodi_one_hot  # 7 fitur one-hot untuk program studi
-                            input_sequence[0, timestep, 16:24] = jalur_masuk_one_hot  # 8 fitur one-hot untuk jalur masuk
+                            input_sequence[0, timestep, :] = numerical_normalized[0, :]
                         
                         # Predict
                         prob = DO_model.predict(input_sequence)[0][0]
