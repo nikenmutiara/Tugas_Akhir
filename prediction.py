@@ -119,18 +119,14 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
     except Exception as e:
         return False, f"Error: {str(e)}"
 
+
 def run_prediction():
     st.title('Klasifikasi Mahasiswa Berpotensi DO')
 
     tab1, tab2 = st.tabs(["Klasifikasi Manual", "Unggah File"])
 
     with tab1:
-        # Input manual
-        nama = st.text_input('Nama')
-        nim = st.text_input('NIM')
-        angkatan = st.text_input('Angkatan')
-        
-        # Dropdown untuk program studi (updated)
+        # Program studi and jalur masuk definitions
         program_studi_options = {
             '31201': 'Teknik Pertambangan',
             '33201': 'Teknik Geofisika',
@@ -145,10 +141,6 @@ def run_prediction():
             '54207': 'Bioteknologi',
             '59202': 'Ilmu Komputer'
         }
-        program_studi_code = st.selectbox('Program Studi', options=list(program_studi_options.keys()), format_func=lambda x: f"{x} - {program_studi_options[x]}")
-        program_studi = program_studi_code  # Store the code in the database
-        
-        # Dropdown untuk jalur masuk (updated)
         jalur_masuk_options = {
             '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
             '4': 'Prestasi',
@@ -159,6 +151,15 @@ def run_prediction():
             '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
             '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
         }
+
+        # Input manual
+        nama = st.text_input('Nama')
+        nim = st.text_input('NIM')
+        angkatan = st.text_input('Angkatan')
+        
+        program_studi_code = st.selectbox('Program Studi', options=list(program_studi_options.keys()), format_func=lambda x: f"{x} - {program_studi_options[x]}")
+        program_studi = program_studi_code  # Store the code in the database
+        
         jalur_masuk_code = st.selectbox('Jalur Masuk', options=list(jalur_masuk_options.keys()), format_func=lambda x: f"{x} - {jalur_masuk_options[x]}")
         jalur_masuk = jalur_masuk_code  # Store the code in the database
     
@@ -175,8 +176,8 @@ def run_prediction():
 
         if st.button('Klasifikasi Status Mahasiswa'):
             try:
-                # Validasi input manual
-                input_numerical_data = [
+                # Definisikan numerical_data di sini
+                numerical_data = [
                     float(SKS7), float(IPKS7), float(IPS1), float(IPS2), float(IPS3),
                     float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
@@ -198,7 +199,7 @@ def run_prediction():
                 assert len(full_features) == 25, f"Expected 25 features, got {len(full_features)}"
 
                 # Normalisasi semua data numerik
-                numerical_normalized = scaler.transform([input_numerical_data])
+                numerical_normalized = scaler.transform([numerical_data])
                                    
                 # Buat array 3D untuk input LSTM: (1, 7, 25)
                 input_sequence = np.zeros((1, 7, 25))
@@ -226,7 +227,7 @@ def run_prediction():
                 # Simpan ke database dengan data riwayat akademik
                 success, message = save_prediction_to_db(
                     engine, nama, nim, angkatan, jalur_masuk, program_studi,
-                    hasil, DO_predik, input_numerical_data
+                    hasil, DO_predik, numerical_data
                 )
                 if success:
                     st.success(message)
