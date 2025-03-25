@@ -15,23 +15,13 @@ scaler = pickle.load(open('Scaler5.pkl', 'rb'))
 
 # Database connection setup
 DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
-#DATABASE_URL = "mysql+pymysql://sql7766198:u1VYyGNmaQ@sql7.freesqldatabase.com/sql7766198"
 engine = create_engine(DATABASE_URL)
 
 def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_studi, hasil, probabilitas, academic_data):
     try:
         with engine.connect() as connection:
-            # Get admin_id from session state
-            current_admin_id = st.session_state.user_id
-            
-            # Check if admin exists
-            admin_check = connection.execute(
-                text("SELECT id_user FROM user WHERE id_user = :id_user"),
-                {"id_user": current_admin_id}
-            ).fetchone()
-            
-            if not admin_check:
-                return False, "User tidak ditemukan"
+            # Pastikan selalu ada user_id di session state
+            current_admin_id = st.session_state.get('user_id', 1)  # Default ke 1 jika tidak ada
             
             # Check if student exists
             mahasiswa_check_query = text("""
@@ -60,19 +50,8 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
 
             id_mahasiswa = mahasiswa_result[0]
 
-            # Check for existing prediction
-            prediksi_check_query = text("""
-                SELECT COUNT(*) 
-                FROM `prediksi` 
-                WHERE id_mahasiswa = :id_mahasiswa AND tanggal_prediksi = CURDATE()
-            """)
-            prediksi_result = connection.execute(prediksi_check_query, {"id_mahasiswa": id_mahasiswa}).fetchone()
-
-            # If prediction exists for today, return False
-            if prediksi_result[0] > 0:
-                return False, "Prediksi untuk mahasiswa ini sudah ada pada hari ini"
-
-            # Insert new prediction
+            # Hapus logika pengecekan prediksi harian
+            # Insert new prediction tanpa batasan
             prediksi_query = text("""
                 INSERT INTO `prediksi` 
                 (id_mahasiswa, id_user, tanggal_prediksi, hasil_klasifikasi, probabilitas)
@@ -118,7 +97,6 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
     
     except Exception as e:
         return False, f"Error: {str(e)}"
-
 
 def run_prediction():
     st.title('Klasifikasi Mahasiswa Berpotensi DO')
@@ -217,7 +195,9 @@ def run_prediction():
                 DO_predik = DO_model.predict(input_sequence)[0][0]
 
                 # Determine prediction result
-                hasil = 'Berpotensi DO' if DO_predik > 0.5 else 'Tidak Berpotensi DO'
+                # PENTING: Ubah logika klasifikasi sesuai kebutuhan spesifik Anda
+                # Contoh: Lebih rendah threshold atau sesuaikan dengan kebutuhan model
+                hasil = 'Berpotensi DO' if DO_predik >= 0.3 else 'Tidak Berpotensi DO'
 
                 # Display the result
                 st.subheader('Hasil Klasifikasi')
@@ -244,6 +224,8 @@ def run_prediction():
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {str(e)}")
     
+    # Bagian dalam fungsi run_prediction(), fokus pada tab file upload
+
     with tab2:
         # Upload file prediksi
         uploaded_file = st.file_uploader("Klasifikasi dari File (CSV atau Excel)", type=['csv', 'xlsx', 'xls'])
@@ -257,30 +239,78 @@ def run_prediction():
                     data = pd.read_excel(uploaded_file)
 
                 # Definisikan kolom yang dibutuhkan
-                ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
-                fitur_lain = ['SKS7', 'IPKS7']
+                required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
+                                    'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
+                
+                # Validasi kolom
+                for col in required_columns:
+                    if col not in data.columns:
+                        st.error(f"Kolom {col} tidak ditemukan dalam file!")
+                        st.stop()
 
                 # Konversi data string menjadi numerik
-                for col in ips_columns + fitur_lain:
+                ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
+                numeric_columns = ['SKS7', 'IPKS7'] + ips_columns
+
+                # Tangani data yang tidak valid
+                for col in numeric_columns:
                     data[col] = pd.to_numeric(data[col], errors='coerce')
+                
+                # Ganti NaN dengan median atau cara lain yang sesuai
+                for col in numeric_columns:
+                    data[col].fillna(data[col].median(), inplace=True)
 
-                # Tangani nilai yang tidak valid
-                data.replace('#N/A', np.nan, inplace=True)
-                data[ips_columns] = data[ips_columns].interpolate(method='linear', axis=1)
-                data['Jalur Masuk'] = data['Jalur Masuk'].fillna('Unknown')
-                data[ips_columns + fitur_lain] = data[ips_columns + fitur_lain].fillna(0.0)
+                # Definisi kode untuk program studi dan jalur masuk
+                program_studi_options = {
+                    '31201': 'Teknik Pertambangan',
+                    '33201': 'Teknik Geofisika',
+                    '34201': 'Teknik Geologi',
+                    '38201': 'Oseanografi',
+                    '44201': 'Matematika',
+                    '45201': 'Fisika',
+                    '46201': 'Biologi',
+                    '49201': 'Statistika',
+                    '47201': 'Kimia',
+                    '51201': 'Geografi',
+                    '54207': 'Bioteknologi',
+                    '59202': 'Ilmu Komputer'
+                }
+                jalur_masuk_options = {
+                    '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
+                    '4': 'Prestasi',
+                    '9': 'Program Internasional',
+                    '11': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
+                    '12': 'Seleksi Mandiri',
+                    '13': 'Ujian Masuk Bersama Lainnya',
+                    '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
+                    '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
+                }
 
-                # Fungsi untuk one-hot encoding dinamis
-                def create_dynamic_one_hot(series, unique_values):
-                    return pd.DataFrame({f'{val}': (series == val).astype(float) for val in unique_values})
+                # Validasi kode program studi dan jalur masuk
+                def validate_and_convert_code(code, options):
+                    # Coba konversi jika code adalah string angka
+                    if isinstance(code, str):
+                        code = code.strip()
+                    
+                    # Periksa apakah code ada di opsi
+                    if str(code) in options:
+                        return str(code)
+                    
+                    # Jika tidak, coba ambil kode pertama yang cocok
+                    for opt_code in options.keys():
+                        if str(opt_code) == str(code) or str(opt_code) in str(code):
+                            return str(opt_code)
+                    
+                    # Jika tidak ditemukan, gunakan default atau pertama
+                    return list(options.keys())[0]
 
-                # Identifikasi unique values
-                unique_prodi = list(program_studi_options.keys())
-                unique_jalur_masuk = list(jalur_masuk_options.keys())
-
-                # One-hot encoding untuk Program Studi dan Jalur Masuk
-                prodi_one_hot = create_dynamic_one_hot(data['Program Studi'], unique_prodi)
-                jalur_masuk_one_hot = create_dynamic_one_hot(data['Jalur Masuk'], unique_jalur_masuk)
+                # Konversi kode program studi dan jalur masuk
+                data['Program Studi'] = data['Program Studi'].apply(
+                    lambda x: validate_and_convert_code(x, program_studi_options)
+                )
+                data['Jalur Masuk'] = data['Jalur Masuk'].apply(
+                    lambda x: validate_and_convert_code(x, jalur_masuk_options)
+                )
 
                 # Prediksi untuk setiap baris
                 predictions = []
@@ -293,44 +323,46 @@ def run_prediction():
                         row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                     ]
                     
-                    # Ambil one-hot encoding untuk baris ini
-                    prodi_encoded = [1 if code == row['Program Studi'] else 0 for code in unique_prodi]
-                    jalur_masuk_encoded = [1 if code == row['Jalur Masuk'] else 0 for code in unique_jalur_masuk]
+                    # One-hot encoding untuk program studi dan jalur masuk
+                    program_studi_codes = list(program_studi_options.keys())
+                    jalur_masuk_codes = list(jalur_masuk_options.keys())
                     
-                    # Gabungkan semua fitur
-                    full_features = numerical_data + prodi_encoded + jalur_masuk_encoded
+                    prodi_one_encoded = [1 if code == row['Program Studi'] else 0 for code in program_studi_codes]
+                    jalur_masuk_encoded = [1 if code == row['Jalur Masuk'] else 0 for code in jalur_masuk_codes]
                     
-                    # Pastikan tepat 25 fitur
-                    if len(full_features) > 25:
-                        full_features = full_features[:25]
-                    elif len(full_features) < 25:
-                        full_features.extend([0.0] * (25 - len(full_features)))
-                    
+                    # Gabungkan fitur
+                    full_features = (
+                        numerical_data +  # 9 fitur akademik
+                        prodi_one_encoded[:12] +  # 12 fitur one-hot program studi
+                        jalur_masuk_encoded[:4]  # 4 fitur one-hot jalur masuk
+                    )
+
                     # Normalisasi
                     numerical_normalized = scaler.transform([full_features])
 
-                    # Buat array 3D untuk input LSTM
+                    # Buat input sequence LSTM
                     input_sequence = np.zeros((1, 7, 25))
-
-                    # Replikasi fitur kategorik ke semua timestep
                     for timestep in range(7):
                         input_sequence[0, timestep, :] = numerical_normalized[0, :]
                     
-                    # Predict
-                    prob = DO_model.predict(input_sequence)[0][0]
-                    result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
+                    # Prediksi
+                    DO_predik = DO_model.predict(input_sequence)[0][0]
                     
-                    probabilities.append(prob)
-                    predictions.append(result)
+                    # PENTING: Sesuaikan threshold prediksi
+                    # Gunakan threshold yang lebih rendah untuk sensitivitas tinggi
+                    hasil = 'Berpotensi DO' if DO_predik >= 0.3 else 'Tidak Berpotensi DO'
+                    
+                    probabilities.append(DO_predik)
+                    predictions.append(hasil)
                 
-                # Tambahkan hasil ke dataframe
+                # Tambahkan hasil prediksi ke dataframe
                 data['Probabilitas'] = probabilities
                 data['Hasil'] = predictions
 
-                # Display the predictions
+                # Tampilkan hasil
                 st.write("Hasil Klasifikasi:", data)
 
-                # Save predictions to database
+                # Simpan prediksi ke database
                 total_mahasiswa = len(data)
                 berhasil_disimpan = 0
                 gagal_disimpan = 0
@@ -341,12 +373,12 @@ def run_prediction():
                             row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
                             row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
                         ]
-                        # Simpan prediksi dan cek duplikasi
+                        # Simpan prediksi
                         success, message = save_prediction_to_db(
                             engine,
                             row['Nama'], 
                             row['NIM'], 
-                            row['Angkatan'], 
+                            str(row['Angkatan']), 
                             str(row['Jalur Masuk']), 
                             str(row['Program Studi']),
                             row['Hasil'], 
@@ -358,9 +390,9 @@ def run_prediction():
                         else:
                             gagal_disimpan += 1
 
-                # Tampilkan ringkasan hasil penyimpanan
+                # Tampilkan ringkasan
                 if gagal_disimpan > 0:
-                    st.warning(f"Dataset sudah ada didatabase, dari total {total_mahasiswa} mahasiswa, {berhasil_disimpan} berhasil disimpan dan {gagal_disimpan} gagal disimpan.")
+                    st.warning(f"Dataset sebagian gagal disimpan, dari total {total_mahasiswa} mahasiswa, {berhasil_disimpan} berhasil disimpan dan {gagal_disimpan} gagal disimpan.")
                 else:
                     st.success(f"Semua {total_mahasiswa} mahasiswa berhasil disimpan.")
 
