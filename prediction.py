@@ -8,8 +8,8 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import SQLAlchemyError
 
 # Load model dan scaler
-DO_model = tf.keras.models.load_model('best_lstm_model5.h5')
-scaler = pickle.load(open('Scaler5.pkl', 'rb'))
+DO_model = tf.keras.models.load_model('best_lstm_model6.h5')
+scaler = pickle.load(open('Scaler6.pkl', 'rb'))
 
 # Koneksi database
 DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
