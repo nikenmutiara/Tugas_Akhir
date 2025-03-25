@@ -182,7 +182,7 @@ def run_prediction():
                     float(IPS4), float(IPS5), float(IPS6), float(IPS7) 
                 ]
                 
-                #get program studi code list for one-hot encoding
+                # Get program studi code list for one-hot encoding
                 program_studi_codes = list(program_studi_options.keys())
 
                 # Get jalur masuk code list for one-hot encoding
@@ -193,13 +193,18 @@ def run_prediction():
                 jalur_masuk_encoded = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
                 
                 # Gabungkan semua fitur dalam urutan yang sama dengan saat training
-                full_features = numerical_data + prodi_one_encoded + jalur_masuk_encoded
+                # Pastikan total fitur tepat 25
+                full_features = (
+                    numerical_data +  # 9 features of academic data 
+                    prodi_one_encoded[:12] +  # 12 features for program studi one-hot
+                    jalur_masuk_encoded[:4]  # 4 features for jalur masuk one-hot
+                )
 
                 # Pastikan jumlah fitur tepat 25
                 assert len(full_features) == 25, f"Expected 25 features, got {len(full_features)}"
 
                 # Normalisasi semua data numerik
-                numerical_normalized = scaler.transform([numerical_data])
+                numerical_normalized = scaler.transform([full_features])
                                    
                 # Buat array 3D untuk input LSTM: (1, 7, 25)
                 input_sequence = np.zeros((1, 7, 25))
