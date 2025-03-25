@@ -191,13 +191,13 @@ def run_prediction():
                 numerical_normalized = scaler.transform([input_numerical_data])
                 
                 # Pisahkan nilai IPS dari fitur lainnya
-                ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
+                ips_columns = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
                 static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
                 
                 # Gabungkan static_features dengan jalur_masuk_encoded
                 all_static_features = np.concatenate([static_features, jalur_masuk_encoded])
                 
-                # Buat array 3D untuk input LSTM: (1, 7, 19)
+                # Buat array 3D untuk input LSTM: (1, 7, 25)
                 input_sequence = np.zeros((1, 7, 25))
                 
                 # Isi channel pertama dengan nilai IPS per semester
@@ -305,7 +305,7 @@ def run_prediction():
                         numerical_normalized = scaler.transform([full_features])
                         
                         # Pisahkan nilai IPS dari fitur lainnya
-                        ips_values = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
+                        ips_columns = numerical_normalized[0, 2:9]  # IPS1 sampai IPS7
                         static_features = numerical_normalized[0, :2]  # IPKS7 dan SKS7
                         
                         # Encode jalur masuk
