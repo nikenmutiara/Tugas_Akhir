@@ -139,8 +139,8 @@ def run_prediction():
             '44201': 'Matematika',
             '45201': 'Fisika',
             '46201': 'Biologi',
-            '49201': 'Statistika',
             '47201': 'Kimia',
+            '49201': 'Statistika',
             '51201': 'Geografi',
             '54207': 'Bioteknologi',
             '59202': 'Ilmu Komputer'
@@ -150,14 +150,14 @@ def run_prediction():
         
         # Dropdown untuk jalur masuk (updated)
         jalur_masuk_options = {
-            '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
-            '4': 'Prestasi',
-            '9': 'Program Internasional',
-            '11': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
-            '12': 'Seleksi Mandiri',
-            '13': 'Ujian Masuk Bersama Lainnya',
-            '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
-            '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
+            '3.0': 'Penelusuran Minat dan Kemampuan (PMDK)',
+            '4.0': 'Prestasi',
+            '9.0': 'Program Internasional',
+            '11.0': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
+            '12.0': 'Seleksi Mandiri',
+            '13.0': 'Ujian Masuk Bersama Lainnya',
+            '14.0': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
+            '15.0': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
         }
         jalur_masuk_code = st.selectbox('Jalur Masuk', options=list(jalur_masuk_options.keys()), format_func=lambda x: f"{x} - {jalur_masuk_options[x]}")
         jalur_masuk = jalur_masuk_code  # Store the code in the database
@@ -188,8 +188,8 @@ def run_prediction():
                 jalur_masuk_codes = list(jalur_masuk_options.keys())
                 
                 # One-hot encoding untuk program studi dan jalur masuk
-                prodi_one_encoded = [1 if code == program_studi_code else 0 for code in program_studi_codes]
-                jalur_masuk_encoded = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
+                prodi_one_encoded = [1 if str(code) == str(program_studi_code) else 0 for code in program_studi_codes]
+                jalur_masuk_encoded = [1 if str(code) == str(jalur_masuk_code) else 0 for code in jalur_masuk_codes]
                 
                 # Gabungkan semua fitur dalam urutan yang sama dengan saat training
                 full_features = numerical_data + prodi_one_encoded + jalur_masuk_encoded
@@ -296,8 +296,8 @@ def run_prediction():
                                 return pd.DataFrame({f'{val}': (series == val).astype(float) for val in unique_values})
 
                             # Buat one-hot encoding dinamis
-                            prodi_one_hot = create_dynamic_one_hot(data['Program Studi'], unique_prodi)
-                            jalur_masuk_one_hot = create_dynamic_one_hot(data['Jalur Masuk'], unique_jalur_masuk)
+                            prodi_one_encoded2 = [1 if str(code) == str(program_studi_code) else 0 for code in program_studi_codes]
+                            jalur_masuk_encoded2 = [1 if str(code) == str(jalur_masuk_code) else 0 for code in jalur_masuk_codes]
 
                             # Proses data untuk prediksi
                             predictions = []
@@ -311,8 +311,8 @@ def run_prediction():
                                 ]
                                 
                                 # Ambil one-hot encoding untuk baris ini
-                                prodi_encoded = prodi_one_hot.loc[row.name].values
-                                jalur_masuk_encoded = jalur_masuk_one_hot.loc[row.name].values
+                                prodi_encoded = prodi_one_encoded2.loc[row.name].values
+                                jalur_masuk_encoded = jalur_masuk_encoded2.loc[row.name].values
                                 
                                 # Gabungkan semua fitur
                                 full_features = numerical_data + list(prodi_encoded) + list(jalur_masuk_encoded)
