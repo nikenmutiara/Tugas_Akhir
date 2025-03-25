@@ -252,114 +252,138 @@ def run_prediction():
 
                 st.write("Data yang diunggah:", data.head())
 
-                # Validasi kolom yang dibutuhkan
-                required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
-                                   'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
-                ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
-            
-                if all(col in data.columns for col in required_columns):
-                    # Pembersihan untuk kolom kategorik
-                    data['Jalur Masuk'] = data['Jalur Masuk'].fillna('Unknown')
-                    data['Program Studi'] = data['Program Studi'].fillna('Unknown')
+                if uploaded_file is not None:
+                    try:
+                        # Load file
+                        if uploaded_file.name.endswith('.csv'):
+                            data = pd.read_csv(uploaded_file)
+                        else:
+                            data = pd.read_excel(uploaded_file)
 
-                    # Mengganti nilai '#N/A' dengan NaN agar dapat diinterpolasi
-                    numerical_columns = ips_columns + ['IPKS7', 'SKS7']
-                    data[numerical_columns] = data[numerical_columns].replace('#N/A', pd.NA)
-
-                    # Pastikan semua kolom numerik
-                    data[numerical_columns] = data[numerical_columns].apply(pd.to_numeric, errors='coerce')
-
-                    # Interpolasi horizontal untuk IPS1 hingga IPS7 & vertikal untuk kolom IPKS7 dan SKS7
-                    data[ips_columns] = data[ips_columns].interpolate(method='linear', axis=1)
-                    data[['IPKS7', 'SKS7']] = data[['IPKS7', 'SKS7']].interpolate(method='index')
-
-                    # Pastikan tidak ada NaN lagi setelah interpolasi
-                    data[numerical_columns] = data[numerical_columns].fillna(0.0)
+                        # Definisikan kolom yang dibutuhkan
+                        required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
+                                        'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
+                        ips_columns = ['IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
                     
-                    # Proses data untuk prediksi
-                    predictions = []
-                    probabilities = []
+                        if all(col in data.columns for col in required_columns):
+                            # Pembersihan untuk kolom kategorik
+                            data['Jalur Masuk'] = data['Jalur Masuk'].fillna('Unknown')
+                            data['Program Studi'] = data['Program Studi'].fillna('Unknown')
 
-                    # Gunakan kode yang sudah Anda definisikan
-                    program_studi_codes = list(program_studi_options.keys())
-                    jalur_masuk_codes = list(jalur_masuk_options.keys())
-                    
-                    for _, row in data.iterrows():
-                        # Siapkan data numerik
-                        numerical_data = [
-                            row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'],
-                            row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
-                        ]
-                        
-                        # One-hot encoding untuk program studi dan jalur masuk
-                        prodi_one_hot = [1 if code == program_studi_code else 0 for code in program_studi_codes]
-                        jalur_masuk_one_hot = [1 if code == jalur_masuk_code else 0 for code in jalur_masuk_codes]
-                        
-                        # Gabungkan semua fitur
-                        full_features = numerical_data + prodi_one_hot + jalur_masuk_one_hot
-                        
-                        # Pastikan jumlah fitur tepat 25
-                        assert len(full_features) == 25, f"Expected 25 features, got {len(full_features)}"
+                            # Mengganti nilai '#N/A' dengan NaN agar dapat diinterpolasi
+                            numerical_columns = ips_columns + ['IPKS7', 'SKS7']
+                            data[numerical_columns] = data[numerical_columns].replace('#N/A', pd.NA)
 
-                        # Normalisasi
-                        numerical_normalized = scaler.transform([full_features])
+                            # Pastikan semua kolom numerik
+                            data[numerical_columns] = data[numerical_columns].apply(pd.to_numeric, errors='coerce')
 
-                        # Buat array 3D untuk input LSTM
-                        input_sequence = np.zeros((1, 7, 25))
+                            # Interpolasi horizontal untuk IPS1 hingga IPS7 & vertikal untuk kolom IPKS7 dan SKS7
+                            data[ips_columns] = data[ips_columns].interpolate(method='linear', axis=1)
+                            data[['IPKS7', 'SKS7']] = data[['IPKS7', 'SKS7']].interpolate(method='index')
 
-                        # Replikasi fitur kategorik ke semua timestep
-                        for timestep in range(7):
-                            input_sequence[0, timestep, :] = numerical_normalized[0, :]
-                        
-                        # Predict
-                        prob = DO_model.predict(input_sequence)[0][0]
-                        result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
-                        
-                        probabilities.append(prob)
-                        predictions.append(result)
-                    
-                    # Tambahkan hasil ke dataframe
-                    data['Probabilitas'] = probabilities
-                    data['Hasil'] = predictions
+                            # Pastikan tidak ada NaN lagi setelah interpolasi
+                            data[numerical_columns] = data[numerical_columns].fillna(0.0)
 
-                    # Display the predictions
-                    st.write("Hasil Klasifikasi:", data)
+                            # TAMBAHKAN KODE IDENTIFIKASI UNIQUE VALUES
+                            unique_prodi = data['Program Studi'].unique()
+                            unique_jalur_masuk = data['Jalur Masuk'].unique()
+                            
+                            print("Unique Program Studi:", unique_prodi)
+                            print("Unique Jalur Masuk:", unique_jalur_masuk)
 
-                    # Save predictions to database
-                    total_mahasiswa = len(data)
-                    berhasil_disimpan = 0
-                    gagal_disimpan = 0
+                            # Fungsi untuk one-hot encoding dinamis
+                            def create_dynamic_one_hot(series, unique_values):
+                                return pd.DataFrame({f'{val}': (series == val).astype(float) for val in unique_values})
 
-                    with engine.connect() as connection:
-                        for _, row in data.iterrows():
-                            academic_data = [
-                                row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
-                                row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
-                            ]
-                            # Simpan prediksi dan cek duplikasi
-                            success, message = save_prediction_to_db(
-                                engine,
-                                row['Nama'], 
-                                row['NIM'], 
-                                row['Angkatan'], 
-                                str(row['Jalur Masuk']), 
-                                str(row['Program Studi']),
-                                row['Hasil'], 
-                                row['Probabilitas'],
-                                academic_data
-                            )
-                            if success:
-                                berhasil_disimpan += 1
+                            # Buat one-hot encoding dinamis
+                            prodi_one_hot = create_dynamic_one_hot(data['Program Studi'], unique_prodi)
+                            jalur_masuk_one_hot = create_dynamic_one_hot(data['Jalur Masuk'], unique_jalur_masuk)
+
+                            # Proses data untuk prediksi
+                            predictions = []
+                            probabilities = []
+
+                            for _, row in data.iterrows():
+                                # Siapkan data numerik
+                                numerical_data = [
+                                    row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'],
+                                    row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
+                                ]
+                                
+                                # Ambil one-hot encoding untuk baris ini
+                                prodi_encoded = prodi_one_hot.loc[row.name].values
+                                jalur_masuk_encoded = jalur_masuk_one_hot.loc[row.name].values
+                                
+                                # Gabungkan semua fitur
+                                full_features = numerical_data + list(prodi_encoded) + list(jalur_masuk_encoded)
+                                
+                                # Pastikan tepat 25 fitur
+                                if len(full_features) > 25:
+                                    full_features = full_features[:25]
+                                elif len(full_features) < 25:
+                                    full_features.extend([0.0] * (25 - len(full_features)))
+                                
+                                # Normalisasi
+                                numerical_normalized = scaler.transform([full_features])
+
+                                # Buat array 3D untuk input LSTM
+                                input_sequence = np.zeros((1, 7, 25))
+
+                                # Replikasi fitur kategorik ke semua timestep
+                                for timestep in range(7):
+                                    input_sequence[0, timestep, :] = numerical_normalized[0, :]
+                                
+                                # Predict
+                                prob = DO_model.predict(input_sequence)[0][0]
+                                result = 'Berpotensi DO' if prob > 0.5 else 'Tidak Berpotensi DO'
+                                
+                                probabilities.append(prob)
+                                predictions.append(result)
+                            
+                            # Tambahkan hasil ke dataframe
+                            data['Probabilitas'] = probabilities
+                            data['Hasil'] = predictions
+
+                            # Display the predictions
+                            st.write("Hasil Klasifikasi:", data)
+
+                            # Save predictions to database
+                            total_mahasiswa = len(data)
+                            berhasil_disimpan = 0
+                            gagal_disimpan = 0
+
+                            with engine.connect() as connection:
+                                for _, row in data.iterrows():
+                                    academic_data = [
+                                        row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
+                                        row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
+                                    ]
+                                    # Simpan prediksi dan cek duplikasi
+                                    success, message = save_prediction_to_db(
+                                        engine,
+                                        row['Nama'], 
+                                        row['NIM'], 
+                                        row['Angkatan'], 
+                                        str(row['Jalur Masuk']), 
+                                        str(row['Program Studi']),
+                                        row['Hasil'], 
+                                        row['Probabilitas'],
+                                        academic_data
+                                    )
+                                    if success:
+                                        berhasil_disimpan += 1
+                                    else:
+                                        gagal_disimpan += 1
+
+                            # Tampilkan ringkasan hasil penyimpanan
+                            if gagal_disimpan > 0:
+                                st.warning(f"Dataset sudah ada didatabase, dari total {total_mahasiswa} mahasiswa, {berhasil_disimpan} berhasil disimpan dan {gagal_disimpan} gagal disimpan.")
                             else:
-                                gagal_disimpan += 1
-
-                    # Tampilkan ringkasan hasil penyimpanan
-                    if gagal_disimpan > 0:
-                        st.warning(f"Dataset sudah ada didatabase, dari total {total_mahasiswa} mahasiswa, {berhasil_disimpan} berhasil disimpan dan {gagal_disimpan} gagal disimpan.")
-                    else:
-                        st.success(f"Semua {total_mahasiswa} mahasiswa berhasil disimpan.")
-                else:
-                    missing_columns = [col for col in required_columns if col not in data.columns]
-                    st.error(f"File tidak memiliki semua kolom yang diperlukan. Kolom yang tidak ada: {', '.join(missing_columns)}")
+                                st.success(f"Semua {total_mahasiswa} mahasiswa berhasil disimpan.")
+                        else:
+                            missing_columns = [col for col in required_columns if col not in data.columns]
+                            st.error(f"File tidak memiliki semua kolom yang diperlukan. Kolom yang tidak ada: {', '.join(missing_columns)}")
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan saat memproses file: {str(e)}")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses file: {str(e)}")
