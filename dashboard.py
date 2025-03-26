@@ -16,10 +16,10 @@ def show_dashboard():
     st.title('Dashboard')
     
     # Existing metrics code (unchanged)
-    accuracy = 99
-    precision = 98
-    recall = 99
-    f1_score = 99
+    accuracy = 95
+    precision = 99
+    recall = 82
+    f1_score = 90
 
     # Custom CSS including new styles for charts and containers
     st.markdown("""
