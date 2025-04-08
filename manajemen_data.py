@@ -167,14 +167,10 @@ def delete_mahasiswa(id_mahasiswa, engine):
         
 # Jalur Masuk yang baru
 jalur_masuk_options = {
-    '3': 'Penelusuran Minat dan Kemampuan (PMDK)',
-    '4': 'Prestasi',
-    '9': 'Program Internasional',
-    '11': 'Program Kerjasama Perusahaan/Institusi/Pemerintah',
     '12': 'Seleksi Mandiri',
-    '13': 'Ujian Masuk Bersama Lainnya',
     '14': 'Seleksi Nasional Berdasarkan Tes (SNBT)',
-    '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)'
+    '15': 'Seleksi Nasional Berdasarkan Prestasi (SNBP)',
+    'Unknown': 'Tidak Diketahui'
 }
 
 # Program Studi yang baru
@@ -186,8 +182,8 @@ program_studi_options = {
     '44201': 'Matematika',
     '45201': 'Fisika',
     '46201': 'Biologi',
-    '49201': 'Statistika',
     '47201': 'Kimia',
+    '49201': 'Statistika',
     '51201': 'Geografi',
     '54207': 'Bioteknologi',
     '59202': 'Ilmu Komputer'
