@@ -18,7 +18,7 @@ def show_dashboard():
     # Existing metrics code (unchanged)
     accuracy = 95
     precision = 99
-    recall = 82
+    recall = 83
     f1_score = 90
 
     # Custom CSS including new styles for charts and containers
