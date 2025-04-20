@@ -15,13 +15,13 @@ def get_db_connection():
 def show_dashboard():
     st.title('Dashboard')
     
-    # Existing metrics code (unchanged)
+    # metrik model
     accuracy = 93
     precision = 81
     recall = 86
     f1_score = 84
 
-    # Custom CSS including new styles for charts and containers
+    # custom CSS
     st.markdown("""
     <style>
     /* Existing metric styles */
@@ -102,7 +102,6 @@ def show_dashboard():
     </style>
     """, unsafe_allow_html=True)
 
-    # Existing metrics HTML (unchanged)
     metrics_html = f"""
     <div class="metric-container">
         <div class="metric-card">
@@ -147,7 +146,7 @@ def show_dashboard():
     st.markdown(metrics_html, unsafe_allow_html=True)
     st.markdown("---")
 
-    # Create two columns for better layout
+    # 2 kolom
     col1, col2 = st.columns([1, 2.5])
 
     with col1:
@@ -189,7 +188,6 @@ def show_dashboard():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Modified section for student distribution by entry year
     container_start = """
     <div class="dashboard-container">
         <div class="container-header">Jumlah Mahasiswa Berdasarkan Angkatan</div>
