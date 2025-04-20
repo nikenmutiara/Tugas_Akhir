@@ -37,7 +37,6 @@ def profile_page(username):
     admin_info = get_admin_info(username)
     if admin_info:
         st.subheader("Informasi Akun")
-        # Tampilkan informasi dalam container untuk menjaga kerapihan
         with st.container():
             st.text_input("Username", value=admin_info.username, disabled=True)
             last_login = admin_info.last_login if admin_info.last_login else 'Belum pernah login'
