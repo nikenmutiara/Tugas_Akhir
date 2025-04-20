@@ -52,7 +52,7 @@ def log_change(connection, id_mahasiswa, aksi, data_lama=None, data_baru=None, a
 
         # Siapkan data logging yang valid
         log_data = {
-            "id_mahasiswa": int(id_mahasiswa),  # Pastikan id_mahasiswa adalah integer
+            "id_mahasiswa": int(id_mahasiswa),  
             "aksi": str(aksi or "AKSI_TIDAK_DIKETAHUI"),
             "data_lama": validate_input(data_lama),
             "data_baru": validate_input(data_baru),
@@ -146,7 +146,6 @@ def delete_mahasiswa(id_mahasiswa, engine):
                 print(f"GAGAL MENYIMPAN LOG: {log_error}")
                 import traceback
                 traceback.print_exc()
-                # Tetap lanjutkan proses penghapusan meskipun log gagal
 
             # Hapus data mahasiswa
             delete_query = text("DELETE FROM mahasiswa WHERE id_mahasiswa = :id")
@@ -160,7 +159,6 @@ def delete_mahasiswa(id_mahasiswa, engine):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            # Berikan pesan yang lebih jelas tentang apa yang menyebabkan error
             if "foreign key constraint fails" in str(e):
                 return False, "Gagal menghapus: Data mahasiswa masih digunakan di tabel lain. Hapus data terkait terlebih dahulu."
             return False, f"Error saat menghapus data: {str(e)}"
@@ -261,7 +259,6 @@ def manage_data_page():
         try:
             create_log_table(connection)
             
-            # Fetch initial data
             query = text("""
                 SELECT m.*, p.hasil_klasifikasi
                 FROM mahasiswa m
@@ -270,10 +267,8 @@ def manage_data_page():
             result = connection.execute(query)
             data_mahasiswa = pd.DataFrame(result.fetchall(), columns=result.keys())
             
-            # Matikan format tampilan numerik pandas untuk menghindari pemisah ribuan
             pd.set_option('display.float_format', '{:.0f}'.format)
             
-            # Convert ID mahasiswa and angkatan to string to avoid comma in display
             if 'id_mahasiswa' in data_mahasiswa.columns:
                 data_mahasiswa['id_mahasiswa'] = data_mahasiswa['id_mahasiswa'].astype(str)
             
@@ -320,9 +315,9 @@ def manage_data_page():
                                 result = conn.execute(query, {
                                     "nama": nama,
                                     "nim": nim,
-                                    "program_studi": program_studi_kode,  # Simpan kode program studi
-                                    "angkatan": int(angkatan),  # Pastikan sebagai integer
-                                    "jalur_masuk": jalur_masuk_kode  # Simpan kode jalur masuk
+                                    "program_studi": program_studi_kode,
+                                    "angkatan": int(angkatan),
+                                    "jalur_masuk": jalur_masuk_kode
                                 })
                                 
                                 last_id = result.lastrowid
@@ -330,7 +325,7 @@ def manage_data_page():
                                     "Nama": nama,
                                     "NIM": nim,
                                     "Program Studi": f"{program_studi_kode} - {program_studi_options[program_studi_kode]}",
-                                    "Angkatan": int(angkatan),  # Pastikan sebagai integer
+                                    "Angkatan": int(angkatan),
                                     "Jalur Masuk": f"{jalur_masuk_kode} - {jalur_masuk_options[jalur_masuk_kode]}"
                                 }
                                 log_change(conn, last_id, "INSERT", None, data_baru, "Data baru ditambahkan")
@@ -358,14 +353,12 @@ def manage_data_page():
                             return f"{kode} - {jalur_masuk_options[kode]}"
                         return kode
                     
-                    # Terapkan fungsi ke kolom yang relevan
                     if 'program_studi' in data_display.columns:
                         data_display['program_studi_display'] = data_display['program_studi'].astype(str).apply(get_prodi_name)
                     
                     if 'jalur_masuk' in data_display.columns:
                         data_display['jalur_masuk_display'] = data_display['jalur_masuk'].astype(str).apply(get_jalur_name)
                     
-                    # Pastikan kolom numerik ditampilkan sebagai string untuk menghindari pemisah ribuan
                     numeric_columns = ['id_mahasiswa', 'angkatan', 'hasil_klasifikasi'] 
                     for col in numeric_columns:
                         if col in data_display.columns and data_display[col].notna().any():
@@ -400,7 +393,6 @@ def manage_data_page():
                         key="update_prodi"
                     )
                     
-                    # Pastikan angkatan ditampilkan sebagai integer
                     if isinstance(current_data["angkatan"], str):
                         current_angkatan = int(current_data["angkatan"])
                     else:
@@ -433,7 +425,7 @@ def manage_data_page():
                                     "nama": update_nama,
                                     "nim": update_nim,
                                     "program_studi": update_program_studi_kode,
-                                    "angkatan": int(update_angkatan),  # Pastikan sebagai integer
+                                    "angkatan": int(update_angkatan),
                                     "jalur_masuk": update_jalur_masuk_kode,
                                     "id": id_mahasiswa
                                 })
@@ -442,7 +434,7 @@ def manage_data_page():
                                     "Nama": current_data["nama"],
                                     "NIM": current_data["NIM"],
                                     "Program Studi": f"{current_data['program_studi']} - {program_studi_options.get(current_prodi, current_prodi)}",
-                                    "Angkatan": int(current_angkatan),  # Pastikan sebagai integer
+                                    "Angkatan": int(current_angkatan), 
                                     "Jalur Masuk": f"{current_data['jalur_masuk']} - {jalur_masuk_options.get(current_jalur, current_jalur)}"
                                 }
                                 
@@ -450,7 +442,7 @@ def manage_data_page():
                                     "Nama": update_nama,
                                     "NIM": update_nim,
                                     "Program Studi": f"{update_program_studi_kode} - {program_studi_options[update_program_studi_kode]}",
-                                    "Angkatan": int(update_angkatan),  # Pastikan sebagai integer
+                                    "Angkatan": int(update_angkatan),
                                     "Jalur Masuk": f"{update_jalur_masuk_kode} - {jalur_masuk_options[update_jalur_masuk_kode]}"
                                 }
                                 
@@ -463,12 +455,11 @@ def manage_data_page():
 
                     elif action_button == "Hapus" and st.button("Hapus Data"):
                         try:
-                            # Pastikan ID dikonversi dengan benar
                             id_mahasiswa_int = int(id_mahasiswa) if isinstance(id_mahasiswa, str) else id_mahasiswa
                             success, message = delete_mahasiswa(id_mahasiswa_int, engine)                            
                             if success:
                                 st.success(message)
-                                time.sleep(1)  # Tunggu sebentar
+                                time.sleep(1)
                                 st.rerun()
                             else:
                                 st.error(message)
@@ -479,7 +470,6 @@ def manage_data_page():
 
             # Tab 3: Riwayat Perubahan
             with tab3:
-                # Pastikan mengambil semua log, tidak hanya yang terbatas
                 query_logs = text("""
                     SELECT id_mahasiswa, aksi, data_lama, data_baru, waktu_perubahan, aksi_user
                     FROM mahasiswa_logs
@@ -488,7 +478,6 @@ def manage_data_page():
                 logs_result = connection.execute(query_logs)
                 logs_data = pd.DataFrame(logs_result.fetchall(), columns=logs_result.keys())
                 
-                # Pastikan id_mahasiswa di logs tidak memiliki format koma
                 if not logs_data.empty and 'id_mahasiswa' in logs_data.columns:
                     logs_data['id_mahasiswa'] = logs_data['id_mahasiswa'].astype(str)
                 
@@ -500,5 +489,4 @@ def manage_data_page():
             connection.close()
             
 if __name__ == "__main__":
-    # Kode ini hanya akan berjalan jika skrip dijalankan secara langsung
     manage_data_page()
