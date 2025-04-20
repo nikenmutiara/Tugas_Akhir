@@ -234,7 +234,7 @@ def run_prediction():
                 if '.' in jalur_masuk:
                     jalur_masuk = jalur_masuk.split('.')[0]
                     
-                # Prepare data for prediction
+                # menyiapkan data untuk prediksi
                 data_uji = pd.DataFrame({
                     'SKS7': [float(SKS7) if SKS7 else 0],
                     'IPKS7': [float(IPKS7) if IPKS7 else 0],
@@ -341,7 +341,7 @@ def run_prediction():
                 X_uji_reshaped = preprocess_input_data(data_uji)
 
                 # Prediksi
-                predictions_prob = DO_model.predict(X_uji_reshaped).flatten()  # Flatten the predictions
+                predictions_prob = DO_model.predict(X_uji_reshaped).flatten()  
 
                 # Menggabungkan hasil prediksi dengan data asli
                 data_uji['Probabilitas'] = predictions_prob
