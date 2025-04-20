@@ -269,6 +269,16 @@ def manage_data_page():
             """)
             result = connection.execute(query)
             data_mahasiswa = pd.DataFrame(result.fetchall(), columns=result.keys())
+            
+            # Matikan format tampilan numerik pandas untuk menghindari pemisah ribuan
+            pd.set_option('display.float_format', '{:.0f}'.format)
+            
+            # Convert ID mahasiswa and angkatan to string to avoid comma in display
+            if 'id_mahasiswa' in data_mahasiswa.columns:
+                data_mahasiswa['id_mahasiswa'] = data_mahasiswa['id_mahasiswa'].astype(str)
+            
+            if 'angkatan' in data_mahasiswa.columns:
+                data_mahasiswa['angkatan'] = data_mahasiswa['angkatan'].astype(str)
 
             tab1, tab2, tab3 = st.tabs(["Input & Lihat Data", "Update/Hapus Data", "Riwayat Perubahan"])
 
@@ -288,7 +298,7 @@ def manage_data_page():
                         key="input_prodi"
                     )
                     
-                    angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, key="input_tahun")
+                    angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, key="input_tahun", format="%d")
                     
                     # Jalur Masuk sebagai selectbox dengan kode dan nama
                     jalur_masuk_kode = st.selectbox(
@@ -311,7 +321,7 @@ def manage_data_page():
                                     "nama": nama,
                                     "nim": nim,
                                     "program_studi": program_studi_kode,  # Simpan kode program studi
-                                    "angkatan": angkatan,
+                                    "angkatan": int(angkatan),  # Pastikan sebagai integer
                                     "jalur_masuk": jalur_masuk_kode  # Simpan kode jalur masuk
                                 })
                                 
@@ -320,7 +330,7 @@ def manage_data_page():
                                     "Nama": nama,
                                     "NIM": nim,
                                     "Program Studi": f"{program_studi_kode} - {program_studi_options[program_studi_kode]}",
-                                    "Angkatan": angkatan,
+                                    "Angkatan": int(angkatan),  # Pastikan sebagai integer
                                     "Jalur Masuk": f"{jalur_masuk_kode} - {jalur_masuk_options[jalur_masuk_kode]}"
                                 }
                                 log_change(conn, last_id, "INSERT", None, data_baru, "Data baru ditambahkan")
@@ -355,6 +365,12 @@ def manage_data_page():
                     if 'jalur_masuk' in data_display.columns:
                         data_display['jalur_masuk_display'] = data_display['jalur_masuk'].astype(str).apply(get_jalur_name)
                     
+                    # Pastikan kolom numerik ditampilkan sebagai string untuk menghindari pemisah ribuan
+                    numeric_columns = ['id_mahasiswa', 'angkatan', 'hasil_klasifikasi'] 
+                    for col in numeric_columns:
+                        if col in data_display.columns and data_display[col].notna().any():
+                            data_display[col] = data_display[col].astype(str)
+                    
                     st.dataframe(data_display)
                 else:
                     st.info("Belum ada data mahasiswa")
@@ -364,7 +380,11 @@ def manage_data_page():
                 if not data_mahasiswa.empty:
                     st.markdown("<div class='content-card'><h4>Update/Hapus Data Mahasiswa</h4>", unsafe_allow_html=True)
                     
-                    id_mahasiswa = st.selectbox("Pilih Mahasiswa", data_mahasiswa["id_mahasiswa"].tolist())
+                    # Konversi ID kembali ke int untuk selectbox
+                    id_list = data_mahasiswa["id_mahasiswa"].tolist()
+                    id_mahasiswa = st.selectbox("Pilih Mahasiswa", id_list)
+                    
+                    # Cari data berdasarkan ID yang dipilih
                     current_data = data_mahasiswa[data_mahasiswa["id_mahasiswa"] == id_mahasiswa].iloc[0].to_dict()
 
                     update_nama = st.text_input("Nama", current_data["nama"])
@@ -380,7 +400,14 @@ def manage_data_page():
                         key="update_prodi"
                     )
                     
-                    update_angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, value=int(current_data["angkatan"]))
+                    # Pastikan angkatan ditampilkan sebagai integer
+                    if isinstance(current_data["angkatan"], str):
+                        current_angkatan = int(current_data["angkatan"])
+                    else:
+                        current_angkatan = current_data["angkatan"]
+                        
+                    update_angkatan = st.number_input("Angkatan", min_value=2000, max_value=2100, 
+                                                     value=current_angkatan, format="%d")
                     
                     # Tampilkan jalur masuk sebagai selectbox
                     current_jalur = str(current_data["jalur_masuk"])
@@ -406,7 +433,7 @@ def manage_data_page():
                                     "nama": update_nama,
                                     "nim": update_nim,
                                     "program_studi": update_program_studi_kode,
-                                    "angkatan": update_angkatan,
+                                    "angkatan": int(update_angkatan),  # Pastikan sebagai integer
                                     "jalur_masuk": update_jalur_masuk_kode,
                                     "id": id_mahasiswa
                                 })
@@ -415,7 +442,7 @@ def manage_data_page():
                                     "Nama": current_data["nama"],
                                     "NIM": current_data["NIM"],
                                     "Program Studi": f"{current_data['program_studi']} - {program_studi_options.get(current_prodi, current_prodi)}",
-                                    "Angkatan": current_data["angkatan"],
+                                    "Angkatan": int(current_angkatan),  # Pastikan sebagai integer
                                     "Jalur Masuk": f"{current_data['jalur_masuk']} - {jalur_masuk_options.get(current_jalur, current_jalur)}"
                                 }
                                 
@@ -423,7 +450,7 @@ def manage_data_page():
                                     "Nama": update_nama,
                                     "NIM": update_nim,
                                     "Program Studi": f"{update_program_studi_kode} - {program_studi_options[update_program_studi_kode]}",
-                                    "Angkatan": update_angkatan,
+                                    "Angkatan": int(update_angkatan),  # Pastikan sebagai integer
                                     "Jalur Masuk": f"{update_jalur_masuk_kode} - {jalur_masuk_options[update_jalur_masuk_kode]}"
                                 }
                                 
@@ -436,9 +463,9 @@ def manage_data_page():
 
                     elif action_button == "Hapus" and st.button("Hapus Data"):
                         try:
-                            # Debug: Pastikan ID dikonversi dengan benar
-                            id_mahasiswa = int(id_mahasiswa)
-                            success, message = delete_mahasiswa(id_mahasiswa, engine)                            
+                            # Pastikan ID dikonversi dengan benar
+                            id_mahasiswa_int = int(id_mahasiswa) if isinstance(id_mahasiswa, str) else id_mahasiswa
+                            success, message = delete_mahasiswa(id_mahasiswa_int, engine)                            
                             if success:
                                 st.success(message)
                                 time.sleep(1)  # Tunggu sebentar
@@ -460,6 +487,11 @@ def manage_data_page():
                 """)
                 logs_result = connection.execute(query_logs)
                 logs_data = pd.DataFrame(logs_result.fetchall(), columns=logs_result.keys())
+                
+                # Pastikan id_mahasiswa di logs tidak memiliki format koma
+                if not logs_data.empty and 'id_mahasiswa' in logs_data.columns:
+                    logs_data['id_mahasiswa'] = logs_data['id_mahasiswa'].astype(str)
+                
                 if not logs_data.empty:
                     st.dataframe(logs_data)
                 else:

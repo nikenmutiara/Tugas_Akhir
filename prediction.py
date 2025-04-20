@@ -9,8 +9,8 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 # Load model dan scaler
-DO_model = tf.keras.models.load_model('best_lstm_model6.h5')
-scaler = pickle.load(open('Scaler6.pkl', 'rb'))
+DO_model = tf.keras.models.load_model('best_lstm_model10.h5')
+scaler = pickle.load(open('Scaler10.pkl', 'rb'))
 
 # Database connection setup
 DATABASE_URL = "mysql+pymysql://root:@localhost/klasifikasi_do"
@@ -22,7 +22,7 @@ ADDITIONAL_COLUMNS = ['SKS7', 'IPKS7']
 PRODI_COLUMNS = ['Prodi_31201', 'Prodi_33201', 'Prodi_34201', 'Prodi_38201', 'Prodi_44201', 
                  'Prodi_45201', 'Prodi_46201', 'Prodi_47201', 'Prodi_49201', 'Prodi_51201', 
                  'Prodi_54207', 'Prodi_59202']
-JALUR_MASUK_COLUMNS = ['Jalur_12.0', 'Jalur_14.0', 'Jalur_15.0', 'Jalur_Unknown']
+JALUR_MASUK_COLUMNS = ['Jalur_12', 'Jalur_14', 'Jalur_15', 'Jalur_Unknown']
 
 # Program studi and jalur masuk definitions
 PROGRAM_STUDI_OPTIONS = {
@@ -69,17 +69,25 @@ def preprocess_input_data(data_uji):
     # Handle categorical columns
     # Ensure Program Studi is converted to string and mapped to known codes
     if 'Program Studi' in data_uji.columns:
-        # Convert to string and map to known codes
-        data_uji['Program Studi'] = data_uji['Program Studi'].astype(str).map(
-            {v: k for k, v in PROGRAM_STUDI_OPTIONS.items()}
-        ).fillna(list(PROGRAM_STUDI_OPTIONS.keys())[0])  # Default to first known code if not found
+        # Convert to string and ensure it's a valid code
+        data_uji['Program Studi'] = data_uji['Program Studi'].astype(str)
+        valid_prodi_codes = list(PROGRAM_STUDI_OPTIONS.keys())
+        data_uji['Program Studi'] = data_uji['Program Studi'].apply(
+            lambda x: x if x in valid_prodi_codes else valid_prodi_codes[0]
+        )
 
-    # Similar handling for Jalur Masuk
+    # Handling Jalur Masuk - clean for model input
     if 'Jalur Masuk' in data_uji.columns:
-        data_uji['Jalur Masuk'] = data_uji['Jalur Masuk'].astype(str).map(
-            {v: k for k, v in JALUR_MASUK_OPTIONS.items()}
-        ).fillna('Unknown')
-
+        # Sanitize jalur masuk values by removing decimal points
+        data_uji['Jalur Masuk'] = data_uji['Jalur Masuk'].astype(str).apply(
+            lambda x: x.split('.')[0] if '.' in x else x
+        )
+        
+        # Map to known values or Unknown
+        data_uji['Jalur Masuk'] = data_uji['Jalur Masuk'].apply(
+            lambda x: x if x in JALUR_MASUK_OPTIONS.keys() else 'Unknown'
+        )
+    
     # One-hot encoding for Program Studi
     prodi_encoded = pd.get_dummies(data_uji['Program Studi'], prefix='Prodi')
     for col in PRODI_COLUMNS:
@@ -89,9 +97,13 @@ def preprocess_input_data(data_uji):
 
     # One-hot encoding for Jalur Masuk
     jalur_masuk_encoded = pd.get_dummies(data_uji['Jalur Masuk'], prefix='Jalur')
+    
+    # Ensure all required columns exist
     for col in JALUR_MASUK_COLUMNS:
         if col not in jalur_masuk_encoded.columns:
             jalur_masuk_encoded[col] = 0
+    
+    # Select only the columns needed by the model
     jalur_masuk_encoded = jalur_masuk_encoded[JALUR_MASUK_COLUMNS]
 
     # Combine all features
@@ -104,16 +116,24 @@ def preprocess_input_data(data_uji):
     # Ensure all columns are float
     combined_features = combined_features.astype(float)
 
-    # Skalakan fitur
+    # Scale features
     X_uji_scaled = scaler.transform(combined_features.values)
 
-    # Reshape untuk LSTM
+    # Reshape for LSTM
     X_uji_reshaped = X_uji_scaled.reshape((X_uji_scaled.shape[0], 1, X_uji_scaled.shape[1]))
 
     return X_uji_reshaped
 
 def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_studi, hasil, probabilitas, academic_data):
     try:
+        # Ensure program_studi is valid
+        if program_studi not in PROGRAM_STUDI_OPTIONS:
+            program_studi = list(PROGRAM_STUDI_OPTIONS.keys())[0]
+        
+        # Standardize jalur_masuk format (remove decimal points)
+        if jalur_masuk and '.' in jalur_masuk:
+            jalur_masuk = jalur_masuk.split('.')[0]
+            
         with engine.connect() as connection:
             current_admin_id = st.session_state.get('user_id', 1)
             
@@ -183,6 +203,9 @@ def save_prediction_to_db(engine, nama, nim, angkatan, jalur_masuk, program_stud
             return True, "Data berhasil disimpan"
     
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        st.error(f"Detail error: {error_details}")
         return False, f"Error: {str(e)}"
 
 def run_prediction():
@@ -194,6 +217,8 @@ def run_prediction():
         # Input manual
         nama = st.text_input('Nama')
         nim = st.text_input('NIM')
+        
+        # Modify angkatan input to explicitly treat as string
         angkatan = st.text_input('Angkatan')
         
         program_studi_code = st.selectbox('Program Studi', options=list(PROGRAM_STUDI_OPTIONS.keys()), format_func=lambda x: f"{x} - {PROGRAM_STUDI_OPTIONS[x]}")
@@ -201,7 +226,7 @@ def run_prediction():
         
         jalur_masuk_code = st.selectbox('Jalur Masuk', options=list(JALUR_MASUK_OPTIONS.keys()), format_func=lambda x: f"{x} - {JALUR_MASUK_OPTIONS[x]}")
         jalur_masuk = jalur_masuk_code
-    
+
         # Input data akademik
         SKS7 = st.text_input('Total SKS Semester 7')
         IPKS7 = st.text_input('Indeks Prestasi Kumulatif Semester 7 (IPKS7)')
@@ -215,19 +240,27 @@ def run_prediction():
 
         if st.button('Klasifikasi Status Mahasiswa'):
             try:
+                # Validasi jalur masuk
+                if not jalur_masuk:
+                    jalur_masuk = 'Unknown'  # Gunakan Unknown jika kosong
+                
+                # Clean jalur_masuk to remove decimal points if present
+                if '.' in jalur_masuk:
+                    jalur_masuk = jalur_masuk.split('.')[0]
+                    
                 # Prepare data for prediction
                 data_uji = pd.DataFrame({
-                    'SKS7': [float(SKS7)],
-                    'IPKS7': [float(IPKS7)],
-                    'IPS1': [float(IPS1)],
-                    'IPS2': [float(IPS2)],
-                    'IPS3': [float(IPS3)],
-                    'IPS4': [float(IPS4)],
-                    'IPS5': [float(IPS5)],
-                    'IPS6': [float(IPS6)],
-                    'IPS7': [float(IPS7)],
+                    'SKS7': [float(SKS7) if SKS7 else 0],
+                    'IPKS7': [float(IPKS7) if IPKS7 else 0],
+                    'IPS1': [float(IPS1) if IPS1 else 0],
+                    'IPS2': [float(IPS2) if IPS2 else 0],
+                    'IPS3': [float(IPS3) if IPS3 else 0],
+                    'IPS4': [float(IPS4) if IPS4 else 0],
+                    'IPS5': [float(IPS5) if IPS5 else 0],
+                    'IPS6': [float(IPS6) if IPS6 else 0],
+                    'IPS7': [float(IPS7) if IPS7 else 0],
                     'Program Studi': [program_studi_code],
-                    'Jalur Masuk': [jalur_masuk_code]
+                    'Jalur Masuk': [jalur_masuk]
                 })
 
                 # Preprocessing
@@ -245,17 +278,29 @@ def run_prediction():
                 st.write(f"NIM: {nim}")
                 st.write(f"Angkatan: {angkatan}")
                 st.write(f"Program Studi: {program_studi_code} - {PROGRAM_STUDI_OPTIONS[program_studi_code]}")
-                st.write(f"Jalur Masuk: {jalur_masuk_code} - {JALUR_MASUK_OPTIONS[jalur_masuk_code]}")
+                
+                # Display jalur masuk with name if available
+                jalur_display = f"{jalur_masuk} - {JALUR_MASUK_OPTIONS.get(jalur_masuk, 'Kode Kustom')}"
+                st.write(f"Jalur Masuk: {jalur_display}")
+                
                 st.write(f"Hasil: {hasil}")
                 st.write(f"Probabilitas: {DO_predik:.2f}")
 
                 # Save to database
                 numerical_data = [
-                    float(SKS7), float(IPKS7), float(IPS1), float(IPS2), float(IPS3),
-                    float(IPS4), float(IPS5), float(IPS6), float(IPS7)
+                    float(SKS7) if SKS7 else 0, 
+                    float(IPKS7) if IPKS7 else 0,
+                    float(IPS1) if IPS1 else 0,
+                    float(IPS2) if IPS2 else 0,
+                    float(IPS3) if IPS3 else 0,
+                    float(IPS4) if IPS4 else 0,
+                    float(IPS5) if IPS5 else 0,
+                    float(IPS6) if IPS6 else 0,
+                    float(IPS7) if IPS7 else 0
                 ]
+                
                 success, message = save_prediction_to_db(
-                    engine, nama, nim, angkatan, jalur_masuk, program_studi,
+                    engine, nama, nim, str(angkatan), jalur_masuk, program_studi,
                     hasil, DO_predik, numerical_data
                 )
                 if success:
@@ -264,7 +309,10 @@ def run_prediction():
                     st.warning(message)
 
             except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
                 st.error(f"Terjadi kesalahan: {str(e)}")
+                st.error(f"Detail error: {error_details}")
     
     with tab2:
         # Upload file prediksi
@@ -277,10 +325,10 @@ def run_prediction():
                     data_uji = pd.read_csv(uploaded_file)
                 else:
                     data_uji = pd.read_excel(uploaded_file)
-
+                
                 # Definisikan kolom yang dibutuhkan
                 required_columns = ['Nama', 'NIM', 'Angkatan', 'Program Studi', 'Jalur Masuk', 
-                                    'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
+                                   'SKS7', 'IPKS7', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'IPS6', 'IPS7']
                 
                 # Validasi kolom
                 for col in required_columns:
@@ -288,6 +336,28 @@ def run_prediction():
                         st.error(f"Kolom {col} tidak ditemukan dalam file!")
                         st.stop()
 
+                # Convert NIM to string first to prevent comma formatting issues
+                data_uji['NIM'] = data_uji['NIM'].astype(str)
+                
+                # Convert Program Studi dan Jalur Masuk to string if they're not already
+                data_uji['Program Studi'] = data_uji['Program Studi'].astype(str)
+                data_uji['Jalur Masuk'] = data_uji['Jalur Masuk'].astype(str)
+                
+                # Explicitly convert Angkatan to string to prevent formatting issues
+                data_uji['Angkatan'] = data_uji['Angkatan'].astype(str)
+                
+                # Clean jalur_masuk to remove decimal points if present
+                data_uji['Jalur Masuk'] = data_uji['Jalur Masuk'].apply(
+                    lambda x: x.split('.')[0] if '.' in x else x
+                )
+                
+                # Map to valid values if necessary
+                # For Program Studi, ensure it's a valid code
+                valid_prodi_codes = list(PROGRAM_STUDI_OPTIONS.keys())
+                data_uji['Program Studi'] = data_uji['Program Studi'].apply(
+                    lambda x: x if x in valid_prodi_codes else valid_prodi_codes[0]
+                )
+                              
                 # Preprocessing
                 X_uji_reshaped = preprocess_input_data(data_uji)
 
@@ -301,8 +371,17 @@ def run_prediction():
                     for prob in predictions_prob
                 ]
 
-                # Tampilkan hasil
-                st.write("Hasil Klasifikasi:", data_uji)
+                # Tampilkan hasil dengan format tabel yang benar
+                st.write("Hasil Klasifikasi:")
+                
+                # Make sure NIM, Angkatan and any other ID columns are strings to prevent formatting issues
+                if 'NIM' in data_uji.columns:
+                    data_uji['NIM'] = data_uji['NIM'].astype(str)
+                if 'Angkatan' in data_uji.columns:
+                    data_uji['Angkatan'] = data_uji['Angkatan'].astype(str)
+                
+                # Display the DataFrame
+                st.dataframe(data_uji)
 
                 # Simpan prediksi ke database
                 total_mahasiswa = len(data_uji)
@@ -311,27 +390,51 @@ def run_prediction():
 
                 with engine.connect() as connection:
                     for _, row in data_uji.iterrows():
-                        academic_data = [
-                            row['SKS7'], row['IPKS7'], row['IPS1'], row['IPS2'], row['IPS3'], 
-                            row['IPS4'], row['IPS5'], row['IPS6'], row['IPS7']
-                        ]
-                        
-                        # Simpan prediksi
-                        success, message = save_prediction_to_db(
-                            engine,
-                            row['Nama'], 
-                            row['NIM'], 
-                            str(row['Angkatan']), 
-                            str(row['Jalur Masuk']), 
-                            str(row['Program Studi']),
-                            row['Prediksi_Status'], 
-                            float(row['Probabilitas']),
-                            academic_data
-                        )
-                        if success:
-                            berhasil_disimpan += 1
-                        else:
+                        try:
+                            # Ensure numerical values are properly handled
+                            academic_data = [
+                                float(row['SKS7']) if pd.notna(row['SKS7']) else 0, 
+                                float(row['IPKS7']) if pd.notna(row['IPKS7']) else 0,
+                                float(row['IPS1']) if pd.notna(row['IPS1']) else 0,
+                                float(row['IPS2']) if pd.notna(row['IPS2']) else 0,
+                                float(row['IPS3']) if pd.notna(row['IPS3']) else 0,
+                                float(row['IPS4']) if pd.notna(row['IPS4']) else 0,
+                                float(row['IPS5']) if pd.notna(row['IPS5']) else 0,
+                                float(row['IPS6']) if pd.notna(row['IPS6']) else 0,
+                                float(row['IPS7']) if pd.notna(row['IPS7']) else 0
+                            ]
+                            
+                            # Convert Angkatan to string to prevent formatting issues
+                            angkatan_str = str(row['Angkatan'])
+                            
+                            # Ensure program_studi is a valid code
+                            program_studi = str(row['Program Studi'])
+                            if program_studi not in PROGRAM_STUDI_OPTIONS:
+                                program_studi = list(PROGRAM_STUDI_OPTIONS.keys())[0]
+                            
+                            # Use cleaned jalur_masuk value
+                            jalur_masuk = str(row['Jalur Masuk'])
+                            
+                            # Simpan prediksi
+                            success, message = save_prediction_to_db(
+                                engine,
+                                str(row['Nama']), 
+                                str(row['NIM']), 
+                                angkatan_str,
+                                jalur_masuk,
+                                program_studi,
+                                row['Prediksi_Status'], 
+                                float(row['Probabilitas']),
+                                academic_data
+                            )
+                            if success:
+                                berhasil_disimpan += 1
+                            else:
+                                gagal_disimpan += 1
+                                st.warning(f"Gagal menyimpan data untuk NIM {row['NIM']}: {message}")
+                        except Exception as e:
                             gagal_disimpan += 1
+                            st.warning(f"Error pada NIM {row['NIM']}: {str(e)}")
 
                 # Tampilkan ringkasan
                 if gagal_disimpan > 0:
@@ -340,7 +443,10 @@ def run_prediction():
                     st.success(f"Semua {total_mahasiswa} mahasiswa berhasil disimpan.")
 
             except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
                 st.error(f"Terjadi kesalahan saat memproses file: {str(e)}")
+                st.error(f"Detail error: {error_details}")
 
 if __name__ == "__main__":
     run_prediction()
